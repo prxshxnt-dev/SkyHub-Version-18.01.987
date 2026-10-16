@@ -40,6 +40,9 @@
     "@radix-ui/react-tabs": "^1.1.3",
     "@radix-ui/react-toast": "^1.2.6",
     "@radix-ui/react-tooltip": "^1.1.8",
+    "@types/animejs": "^4.0.0",
+    "@types/three": "^0.186.0",
+    "animejs": "^4.5.0",
     "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -51,8 +54,10 @@
     "firebase-admin": "^12.0.0",
     "framer-motion": "^11.11.11",
     "genkit": "^1.20.0",
+    "gsap": "^3.15.0",
     "jszip": "^3.10.1",
     "lucide-react": "^0.475.0",
+    "motion": "^14.3.0",
     "next": "^15.2.0",
     "patch-package": "^8.0.0",
     "react": "^19.0.0",
@@ -63,6 +68,7 @@
     "recharts": "^2.15.1",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
+    "three": "^0.186.1",
     "zod": "^3.24.2"
   },
   "devDependencies": {

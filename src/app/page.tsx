@@ -1,166 +1,246 @@
+'use client';
 
-"use client";
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
+import { PaperState, PaperTheme, ROMResource, RecoveryResource, ModuleResource, WallpaperResource, DonorItem } from '@/paper/types';
+import { TactileHeader } from '@/paper/components/Header/TactileHeader';
+import { HeroSection } from '@/paper/components/Sections/HeroSection';
+import { ROMsSection } from '@/paper/components/Sections/ROMsSection';
+import { RecoveriesSection } from '@/paper/components/Sections/RecoveriesSection';
+import { ModulesSection } from '@/paper/components/Sections/ModulesSection';
+import { GuidesSection } from '@/paper/components/Sections/GuidesSection';
+import { DeviceExplorerSection } from '@/paper/components/Sections/DeviceExplorerSection';
+import { WallpapersSection } from '@/paper/components/Sections/WallpapersSection';
+import { DonorSection } from '@/paper/components/Sections/DonorSection';
+import { FooterSection } from '@/paper/components/Sections/FooterSection';
+import { ShortcutHUD, triggerShortcutHUD } from '@/paper/components/UI/ShortcutHUD';
+import { SiteMapModal } from '@/paper/components/Modals/SiteMapModal';
+import { ResourceDetailModal } from '@/paper/components/Modals/ResourceDetailModal';
+import { AuthModal } from '@/components/auth/auth-modal';
+import { useSound, toggleSound, playTerminalBlip, playCheckmarkChime } from '@/paper/utils/soundManager';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
 
-import { Navbar } from '@/components/layout/navbar';
-import { Hero } from '@/components/sections/hero';
-import { DonorShowcase } from '@/components/sections/DonorShowcase';
-import { DeviceExplorer } from '@/components/sections/device-explorer';
-import { ROMGrid, ModuleGrid, GuideGrid, RequestROM, RootGrid, ModApkGrid, RecoveryGrid, CustomGrid, LiveWallpaperGrid } from '@/components/sections/content-grid';
-import { Wallpapers } from '@/components/sections/wallpapers';
-import { Slideshow } from '@/components/sections/slideshow';
-import { Footer } from '@/components/sections/footer';
-import { useCollection, useMemoFirebase, useFirestore, useDoc } from '@/firebase';
-import { collection, query, orderBy, doc } from 'firebase/firestore';
-import { motion } from 'framer-motion';
-import { SiteSettings } from '@/lib/store';
-import { FloatingKitten } from '@/components/ui/floating-kitten';
+// Dynamically import 3D Paper Intro and Structure Room to ensure seamless client-only WebGL initialization
+const PaperIntro = dynamic(
+  () => import('@/paper/components/PaperIntro/PaperIntro').then(m => m.PaperIntro),
+  { ssr: false }
+);
 
-const sectionVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }
-  }
-};
-
-const highlightWords = (text: string, highlights: any[] = []) => {
-  if (!highlights || highlights.length === 0) return text;
-  let parts: (string | React.ReactNode)[] = [text];
-  highlights.forEach((hw: any) => {
-    if (!hw.word) return;
-    const escapedWord = hw.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`(${escapedWord})`, 'gi');
-    parts = parts.flatMap((p: any, pIdx: number) => {
-      if (typeof p === 'string') {
-        const split = p.split(regex);
-        return split.map((s, i) => i % 2 !== 0 ? <span key={`${hw.word}-${pIdx}-${i}`} style={{ color: hw.color, textShadow: `0 0 10px ${hw.color}80` }}>{s}</span> : s);
-      }
-      return p;
-    });
-  });
-  return parts;
-};
+const StructureRoom = dynamic(
+  () => import('@/paper/components/StructureRoom/StructureRoom').then(m => m.StructureRoom),
+  { ssr: false }
+);
 
 export default function Home() {
+  const [paperState, setPaperState] = useState<PaperState>('opened');
+  const [theme, setTheme] = useState<PaperTheme>('kraft');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [selectedResource, setSelectedResource] = useState<any | null>(null);
+  const [isStructureRoomOpen, setIsStructureRoomOpen] = useState(false);
+  const [showMoodGame, setShowMoodGame] = useState(false);
+
+  // Firestore live collections
   const db = useFirestore();
+  const romsQuery = useMemoFirebase(() => (db ? query(collection(db, 'roms'), orderBy('name', 'asc')) : null), [db]);
+  const recoveriesQuery = useMemoFirebase(() => (db ? query(collection(db, 'recoveries')) : null), [db]);
+  const modulesQuery = useMemoFirebase(() => (db ? query(collection(db, 'modules')) : null), [db]);
+  const wallpapersQuery = useMemoFirebase(() => (db ? query(collection(db, 'wallpapers')) : null), [db]);
+  const tutorialsQuery = useMemoFirebase(() => (db ? query(collection(db, 'tutorials')) : null), [db]);
+  const donorsQuery = useMemoFirebase(() => (db ? query(collection(db, 'donors')) : null), [db]);
 
-  const romsQuery = useMemoFirebase(() => query(collection(db, 'roms'), orderBy('createdAt', 'desc')), [db]);
-  const recoveriesQuery = useMemoFirebase(() => query(collection(db, 'recoveries'), orderBy('createdAt', 'desc')), [db]);
-  const modulesQuery = useMemoFirebase(() => query(collection(db, 'modules'), orderBy('createdAt', 'desc')), [db]);
-  const apksQuery = useMemoFirebase(() => query(collection(db, 'mod-apks'), orderBy('createdAt', 'desc')), [db]);
-  const wallpapersQuery = useMemoFirebase(() => query(collection(db, 'wallpapers'), orderBy('createdAt', 'desc')), [db]);
-  const liveWallpapersQuery = useMemoFirebase(() => query(collection(db, 'live-wallpapers'), orderBy('createdAt', 'desc')), [db]);
-  const guidesQuery = useMemoFirebase(() => query(collection(db, 'tutorials'), orderBy('createdAt', 'desc')), [db]);
-  const rootPackagesQuery = useMemoFirebase(() => query(collection(db, 'root-packages'), orderBy('createdAt', 'desc')), [db]);
-  const navLinksQuery = useMemoFirebase(() => query(collection(db, 'navigation-links'), orderBy('order', 'asc')), [db]);
-  const customResourcesQuery = useMemoFirebase(() => query(collection(db, 'custom-resources'), orderBy('createdAt', 'desc')), [db]);
-  const globalSettingsRef = useMemoFirebase(() => doc(db, 'settings', 'global'), [db]);
+  const { data: firestoreRoms } = useCollection<any>(romsQuery);
+  const { data: firestoreRecoveries } = useCollection<any>(recoveriesQuery);
+  const { data: firestoreModules } = useCollection<any>(modulesQuery);
+  const { data: firestoreWallpapers } = useCollection<any>(wallpapersQuery);
+  const { data: firestoreTutorials } = useCollection<any>(tutorialsQuery);
+  const { data: firestoreDonors } = useCollection<any>(donorsQuery);
 
-  const { data: roms, isLoading: romsLoading } = useCollection(romsQuery);
-  const { data: recoveries, isLoading: recoveriesLoading } = useCollection(recoveriesQuery);
-  const { data: modules, isLoading: modulesLoading } = useCollection(modulesQuery);
-  const { data: apks, isLoading: apksLoading } = useCollection(apksQuery);
-  const { data: wallpapers, isLoading: wallpapersLoading } = useCollection(wallpapersQuery);
-  const { data: liveWallpapers, isLoading: liveLoading } = useCollection(liveWallpapersQuery);
-  const { data: guides, isLoading: guidesLoading } = useCollection(guidesQuery);
-  const { data: rootPackages, isLoading: rootLoading } = useCollection(rootPackagesQuery);
-  const { data: customLinks } = useCollection(navLinksQuery);
-  const { data: customResources, isLoading: customLoading } = useCollection(customResourcesQuery);
-  const { data: globalSettings } = useDoc<SiteSettings>(globalSettingsRef);
-
-  const defaultLayout = [
-    { id: 'slideshow', order: 0, visible: true },
-    { id: 'hero', order: 1, visible: true },
-    { id: 'devices', order: 1.2, visible: true },
-    { id: 'donors', order: 1.5, visible: true },
-    { id: 'roms', order: 2, visible: true, columns: 3, gap: 4 },
-    { id: 'recoveries', order: 2.5, visible: true, columns: 3, gap: 4 },
-    { id: 'modules', order: 3, visible: true, columns: 3, gap: 4 },
-    { id: 'apks', order: 4, visible: true, columns: 3, gap: 4 },
-    { id: 'root', order: 5, visible: true, columns: 3, gap: 4 },
-    { id: 'guides', order: 6, visible: true, columns: 3, gap: 4 },
-    { id: 'liveWallpapers', order: 7, visible: true, columns: 3, gap: 4 },
-    { id: 'wallpapers', order: 8, visible: true, columns: 3, gap: 4 },
-  ];
-
-  // Fallback to default layout if globalSettings or layoutConfig is missing
-  const layout = globalSettings?.layoutConfig || defaultLayout;
-  
-  // Ensure all default sections are present
-  const mergedLayout = defaultLayout.map(defaultSection => {
-    const customSection = layout.find((s: any) => s.id === defaultSection.id);
-    return customSection || defaultSection;
-  });
-  
-  const sortedLayout = [...mergedLayout].sort((a, b) => a.order - b.order);
-
-  const contentSections = customLinks?.filter(link => link.type === 'section') || [];
-
-  const renderSection = (section: any) => {
-    if (!section.visible) return null;
-    
-    switch (section.id) {
-      case 'slideshow': return <Slideshow slideshowImages={globalSettings?.slideshowImages || []} rounding={globalSettings?.slideshowRounding} />;
-      case 'hero': return <Hero />;
-      case 'devices': return <DeviceExplorer />;
-      case 'donors': return <DonorShowcase />;
-      case 'roms': return <ROMGrid roms={roms || []} isLoading={romsLoading} />;
-      case 'recoveries': return <RecoveryGrid recoveries={recoveries || []} isLoading={recoveriesLoading} />;
-      case 'modules': return <ModuleGrid modules={modules || []} isLoading={modulesLoading} />;
-      case 'apks': return <ModApkGrid apks={apks || []} isLoading={apksLoading} />;
-      case 'root': return <RootGrid packages={rootPackages || []} isLoading={rootLoading} />;
-      case 'guides': return (
-        <section id="guides" className="max-w-7xl mx-auto px-6 py-24">
-          <div className="grid lg:grid-cols-3 gap-16">
-            <div className="lg:col-span-2"><GuideGrid guides={guides || []} isLoading={guidesLoading} /></div>
-            <RequestROM />
-          </div>
-        </section>
-      );
-      case 'liveWallpapers': return <LiveWallpaperGrid wallpapers={liveWallpapers || []} isLoading={liveLoading} />;
-      case 'wallpapers': return <Wallpapers wallpapers={wallpapers || []} isLoading={wallpapersLoading} />;
-      default: return null;
+  // Smooth scroll helper
+  const scrollToSection = useCallback((id: string) => {
+    if (paperState !== 'opened') {
+      setPaperState('opened');
     }
-  };
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  }, [paperState]);
+
+  // Recrumple handler to re-enter 3D paper stage
+  const handleRecrumple = useCallback(() => {
+    playTerminalBlip(400, 0.05);
+    setPaperState('crumpled');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  // Global Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is inside an input or textarea
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(prev => !prev);
+      } else if (e.key === 'Escape') {
+        setIsSearchOpen(false);
+        setSelectedResource(null);
+        setIsStructureRoomOpen(false);
+      } else if (e.key.toLowerCase() === 's' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setIsStructureRoomOpen(prev => !prev);
+        triggerShortcutHUD({
+          title: 'BLUEPRINT DOSSIER',
+          badge: '[S]',
+          icon: 'Layers',
+        });
+      } else if (e.key.toLowerCase() === 'u' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        handleRecrumple();
+      } else if (e.key.toLowerCase() === 'm' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        const next = toggleSound();
+        triggerShortcutHUD({
+          title: next ? 'SOUND MUTED' : 'SOUND ACTIVE',
+          badge: next ? 'OFF' : 'ON',
+          icon: next ? 'VolumeX' : 'Volume2',
+        });
+      } else if (e.key.toLowerCase() === 'r' && !e.metaKey && !e.ctrlKey) {
+        scrollToSection('roms');
+        triggerShortcutHUD({ title: 'CUSTOM ROMS', badge: '[R]' });
+      } else if (e.key.toLowerCase() === 'g' && !e.metaKey && !e.ctrlKey) {
+        scrollToSection('guides');
+        triggerShortcutHUD({ title: 'FIELD GUIDES', badge: '[G]' });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleRecrumple, scrollToSection]);
 
   return (
-    <main className="min-h-screen relative overflow-hidden">
-      <Navbar />
-      <FloatingKitten />
-      
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }}>
-        <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}>
-          <div className="space-y-16 pb-32">
-            {sortedLayout.map(section => (
-              <motion.div key={section.id} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }} variants={sectionVariants}>
-                {renderSection(section)}
-              </motion.div>
-            ))}
-            {globalSettings?.customSections?.map((section: any, idx: number) => (
-              <motion.div key={`custom-${idx}`} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }} variants={sectionVariants}>
-                <section className="max-w-7xl mx-auto px-6 py-12">
-                  <h2 className="text-4xl font-black uppercase tracking-tighter mb-8">{highlightWords(section.title, section.highlights || [])}</h2>
-                  <div className="prose prose-invert max-w-none prose-p:text-foreground/80 prose-headings:text-foreground">
-                    <p className="whitespace-pre-line">{highlightWords(section.content, section.highlights || [])}</p>
-                  </div>
-                </section>
-              </motion.div>
-            ))}
-            {contentSections.map((section, idx) => (
-              <motion.div key={section.id} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }} variants={sectionVariants}>
-                <CustomGrid 
-                  section={section} 
-                  items={customResources?.filter(item => item.sectionId === section.id) || []} 
-                  isLoading={customLoading}
-                />
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-      </motion.div>
+    <div data-theme={theme} className="min-h-screen bg-[var(--c-bg,#EFE6D5)] text-[var(--c-heading,#241F1A)] transition-colors duration-500 font-mono relative selection:bg-[#241F1A] selection:text-[#F4EDE0]">
+      {/* 3D WebGL Paper Intro Experience (Active when crumpled or opening) */}
+      {paperState !== 'opened' ? (
+        <div className="fixed inset-0 z-50">
+          <PaperIntro
+            paperState={paperState}
+            setPaperState={setPaperState}
+            theme={theme}
+            setTheme={setTheme}
+            showMoodGame={showMoodGame}
+            setShowMoodGame={setShowMoodGame}
+            onMoodUnlocked={() => {}}
+            onOpenComplete={() => {
+              playCheckmarkChime();
+              setPaperState('opened');
+            }}
+          />
+        </div>
+      ) : (
+        <>
+          {/* Tactile Header Bar */}
+          <TactileHeader
+            theme={theme}
+            setTheme={setTheme}
+            onRecrumple={handleRecrumple}
+            onOpenStructureRoom={() => setIsStructureRoomOpen(true)}
+            onOpenSearch={() => setIsSearchOpen(true)}
+            onNavigateSection={scrollToSection}
+            onOpenAuth={() => setIsAuthOpen(true)}
+          />
 
-      <Footer />
-    </main>
+          {/* Physical Kraft Paper Sheet Container */}
+          <main className="w-full pt-20 sm:pt-24 pb-16 px-3 sm:px-6 md:px-8">
+            <div
+              id="physical-paper-sheet"
+              className="max-w-7xl mx-auto p-5 sm:p-10 md:p-12 lg:p-14 paper-grain animate-content-fade"
+            >
+              {/* Top Kraft Corner Tapes */}
+              <div className="absolute -top-3 left-8 w-20 h-5 bg-[#d9cbb2]/85 rotate-[-2deg] border border-black/10 shadow-xs pointer-events-none" />
+              <div className="absolute -top-3 right-8 w-20 h-5 bg-[#d9cbb2]/85 rotate-[2deg] border border-black/10 shadow-xs pointer-events-none" />
+
+              {/* Sections */}
+              <HeroSection
+                onExploreROMs={() => scrollToSection('roms')}
+                onExploreRecoveries={() => scrollToSection('recoveries')}
+                onExploreModules={() => scrollToSection('modules')}
+                onOpenStructureRoom={() => setIsStructureRoomOpen(true)}
+                romsCount={firestoreRoms?.length || 18}
+                modulesCount={firestoreModules?.length || 24}
+                recoveriesCount={firestoreRecoveries?.length || 6}
+              />
+
+              <ROMsSection
+                roms={firestoreRoms}
+                onSelectROM={rom => setSelectedResource(rom)}
+              />
+
+              <RecoveriesSection
+                recoveries={firestoreRecoveries}
+                onSelectRecovery={rec => setSelectedResource(rec)}
+              />
+
+              <ModulesSection
+                modules={firestoreModules}
+                onSelectModule={mod => setSelectedResource(mod)}
+              />
+
+              <GuidesSection guides={firestoreTutorials} />
+
+              <DeviceExplorerSection />
+
+              <WallpapersSection wallpapers={firestoreWallpapers} />
+
+              <DonorSection donors={firestoreDonors} />
+
+              <FooterSection
+                onScrollToTop={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                onOpenStructureRoom={() => setIsStructureRoomOpen(true)}
+              />
+            </div>
+          </main>
+        </>
+      )}
+
+      {/* Global Shortcut HUD Floating Toasts */}
+      <ShortcutHUD />
+
+      {/* Command Palette / Search Modal */}
+      <SiteMapModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        onNavigateSection={scrollToSection}
+        onSelectResource={item => setSelectedResource(item)}
+      />
+
+      {/* Resource Detail & Flashing Instruction Modal */}
+      <ResourceDetailModal
+        item={selectedResource}
+        onClose={() => setSelectedResource(null)}
+      />
+
+      {/* Blueprint Structure Room Dossier */}
+      {isStructureRoomOpen && (
+        <StructureRoom
+          theme={theme}
+          setTheme={setTheme}
+          onExit={() => setIsStructureRoomOpen(false)}
+        />
+      )}
+
+      {/* Admin Terminal Auth Modal */}
+      <AuthModal
+        isOpen={isAuthOpen}
+        onOpenChange={setIsAuthOpen}
+      />
+    </div>
   );
 }

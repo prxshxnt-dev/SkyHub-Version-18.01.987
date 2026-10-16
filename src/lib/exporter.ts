@@ -140,7 +140,7 @@ export async function runSkyHubExport(
     // STEP 1: Fetching database collections
     updateProgress('Fetching SkyHub database records...', 1, 7, 5);
 
-    const safeFetchDocs = async (collName: string) => {
+    const safeFetchDocs = async (collName: string): Promise<any[]> => {
       try {
         const snap = await getDocs(collection(db, collName));
         return snap.docs.map(d => ({ id: d.id, ...d.data() }));

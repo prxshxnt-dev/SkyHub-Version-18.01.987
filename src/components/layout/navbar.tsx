@@ -478,7 +478,7 @@ export function Navbar() {
       <SearchOverlay isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
 
       {/* Auth Modal */}
-      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      (<AuthModal isOpen={authModalOpen} setOpen={setAuthModalOpen} /> as any)
     </>
   );
 }

@@ -181,3 +181,88 @@
 .pause-marquee:hover {
   animation-play-state: paused;
 }
+
+/* ═══════════════════════════════════════════════
+   TACTILE 3D KRAFT PAPER PORTFOLIO THEME TOKENS
+   ═══════════════════════════════════════════════ */
+
+@font-face {
+  font-family: 'Kalam';
+  src: url('/fonts/Kalam-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Kalam';
+  src: url('/fonts/Kalam-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+.font-handwriting {
+  font-family: 'Kalam', cursive, ui-sans-serif, sans-serif;
+}
+
+:root {
+  --c-bg: #EFE6D5;
+  --c-heading: #241F1A;
+  --c-body: #443E35;
+  --c-muted: #686053;
+  --c-subtle: #544C40;
+  --c-faint: #7D7569;
+  --c-name: #2A2520;
+  --c-border: rgba(36, 31, 26, 0.14);
+  --c-border-hover: rgba(36, 31, 26, 0.35);
+  --c-border-focus: #241F1A;
+  --c-btn-bg: #241F1A;
+  --c-btn-bg-hover: #3A3328;
+  --c-btn-text: #F4EDE0;
+  --c-card: rgba(255, 255, 255, 0.28);
+  --c-card-gradient-from: rgba(255,255,255,0.4);
+  --c-card-gradient-to: rgba(255,255,255,0.08);
+  --c-header-bg: #EFE6D5;
+  --c-header-border: rgba(36,31,26,0.1);
+  --c-input-bg: rgba(255, 255, 255, 0.5);
+  --c-modal-bg: rgba(239, 230, 213, 0.98);
+  --c-modal-backdrop: rgba(36, 31, 26, 0.7);
+  --c-dot: #8B4513;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+}
+
+#physical-paper-sheet {
+  background-color: var(--c-bg, #EFE6D5);
+  box-shadow: 
+    0 1px 3px rgba(36, 31, 26, 0.05),
+    0 10px 30px -5px rgba(36, 31, 26, 0.12),
+    0 20px 45px -10px rgba(36, 31, 26, 0.15);
+  border-radius: 12px;
+  border: 1px solid var(--c-border);
+  position: relative;
+}
+
+.paper-grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  mix-blend-mode: multiply;
+  border-radius: inherit;
+}
+
+@keyframes contentFadeIn {
+  0% { opacity: 0; transform: scale(0.99); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.animate-content-fade {
+  animation: contentFadeIn 0.22s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  will-change: opacity, transform;
+}

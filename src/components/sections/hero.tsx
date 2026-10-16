@@ -81,7 +81,7 @@ export function Hero() {
   };
 
   const highlightWords = (text: string) => {
-    if (!globalSettings?.highlightedWords || globalSettings.highlightedWords.length === 0) return text;
+    if (!(globalSettings as any)?.highlightedWords || globalSettings.highlightedWords.length === 0) return text;
     let parts: (string | React.ReactNode)[] = [text];
     
     globalSettings.highlightedWords.forEach((hw: any) => {
