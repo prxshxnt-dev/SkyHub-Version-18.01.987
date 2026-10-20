@@ -5,19 +5,13 @@ import Link from 'next/link';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { DEFAULT_DONATION_CONFIG, SiteSettings } from '@/lib/store';
-import { Card } from '@/components/ui/card';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { 
   ShieldCheck, 
   Unlock, 
   Code, 
   Github, 
   Send, 
-  MessageSquare, 
-  Heart, 
-  ArrowUpRight,
-  Shield
+  MessageSquare
 } from 'lucide-react';
 
 export function Footer() {
@@ -109,6 +103,12 @@ export function Footer() {
                     Wallpapers
                   </Link>
                 </li>
+                <li>
+                  <Link href="/dashboard" className="text-amber-600 dark:text-[#FDE694] font-bold hover:underline transition-colors flex items-center gap-1">
+                    <span>Admin Terminal</span>
+                    <span>→</span>
+                  </Link>
+                </li>
               </ul>
             </div>
 
@@ -168,37 +168,7 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Lead Architect / Maintainer Showcase Card (Preserving Admin Data) */}
-        {activeConfig.adminName && (
-          <div className="bg-[#FAF3DD] dark:bg-[#1A1914] border border-[#EBE4CF] dark:border-[#2C2A22] rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 shadow-sm">
-            <Avatar className="w-20 h-20 rounded-2xl border-2 border-[#EBE4CF] dark:border-[#36342A]">
-              <AvatarImage src={activeConfig.adminAvatarUrl} className="object-cover" />
-              <AvatarFallback className="bg-[#FDE694] text-[#121212] font-black text-xl">
-                {activeConfig.adminName[0] || 'A'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 text-center sm:text-left">
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#787567] dark:text-[#9C9888]">
-                  Lead Architect
-                </span>
-                <span className="w-1.5 h-1.5 rounded-full bg-[#FDE694]" />
-                <h3 className="text-lg font-black text-[#1C1B17] dark:text-[#F4EFE6]">
-                  {activeConfig.adminName}
-                </h3>
-              </div>
-              <p className="text-xs text-[#787567] dark:text-[#BDB8A4] leading-relaxed max-w-2xl">
-                {activeConfig.adminBio || 'Guiding device tree development, kernel performance, and verified builds.'}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#FDE694] text-[#121212]">
-                <Heart className="w-3.5 h-3.5 fill-current text-rose-600" />
-                Verified
-              </span>
-            </div>
-          </div>
-        )}
+
 
         {/* Operational Status & Bottom Bar */}
         <div className="pt-8 border-t border-[#EBE4CF] dark:border-[#2C2A22] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#787567] dark:text-[#8E8A7A]">

@@ -1,8 +1,43 @@
 'use client';
+
 import React, { useState, useRef, useEffect } from 'react';
 import { TEAM_MEMBERS } from '@/lib/sky-data';
-import { Github, Send, Sparkles, Terminal, Wrench, ShieldCheck, FlaskConical, History, UserCheck, Users, RotateCcw } from 'lucide-react';
-import { TeamMember } from '@/lib/sky-types';
+import { 
+  Github, 
+  Send, 
+  Sparkles, 
+  Terminal, 
+  Wrench, 
+  ShieldCheck, 
+  FlaskConical, 
+  History, 
+  UserCheck, 
+  Users, 
+  RotateCcw,
+  Pencil,
+  Trash2,
+  Plus,
+  Upload,
+  Loader2,
+  Check,
+  Settings2,
+  ExternalLink
+} from 'lucide-react';
+import { useFirestore, useCollection, useDoc, useMemoFirebase, useUser } from '@/firebase';
+import { collection, doc, query, orderBy, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { compressImage } from '@/lib/image-upload';
+import { toast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import Link from 'next/link';
 
 const TeamAvatar: React.FC<{ name: string; avatarUrl?: string }> = ({ name, avatarUrl }) => {
   const initials = (name || 'SK')
@@ -103,28 +138,67 @@ const RenderRoleBadges: React.FC<{ role?: string; type?: string }> = ({ role = '
 };
 
 export const TeamSection: React.FC = () => {
+  const db = useFirestore();
+  const { user } = useUser();
+  const isSuperAdmin = user?.email?.toLowerCase().trim() === 'meinkxun@gmail.com' || user?.email?.toLowerCase().trim() === 'skyhubowner@gmail.com';
+
+  // Firestore queries for dynamic credits and header
+  const creditsQuery = useMemoFirebase(
+    () => (db ? query(collection(db, 'credits'), orderBy('order', 'asc')) : null),
+    [db]
+  );
+  const { data: dbCredits, isLoading: isCreditsLoading } = useCollection(creditsQuery);
+
+  const headerRef = useMemoFirebase(() => (db ? doc(db, 'settings', 'credits_header') : null), [db]);
+  const { data: headerData } = useDoc<any>(headerRef);
+
+  const sectionTitle = headerData?.title || 'CREDITS & MAINTAINERS';
+  const sectionSubtitle = headerData?.subtitle || 'The developers, device maintainers, and contributors driving the SKY ecosystem.';
+
   const [filter, setFilter] = useState<FilterType>('all');
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const sectionRef = useRef<HTMLElement | null>(null);
-  const members = TEAM_MEMBERS;
 
-  const humanMembers = members.filter((m) => {
+  // Edit Member Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<any | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editHandle, setEditHandle] = useState('');
+  const [editRole, setEditRole] = useState('Maintainer');
+  const [editType, setEditType] = useState<'developer' | 'maintainer' | 'community'>('maintainer');
+  const [editAvatarUrl, setEditAvatarUrl] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [editGithubUrl, setEditGithubUrl] = useState('');
+  const [editTelegramUrl, setEditTelegramUrl] = useState('');
+  const [editOrder, setEditOrder] = useState<number>(1);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  // Edit Header Modal State
+  const [isHeaderModalOpen, setIsHeaderModalOpen] = useState(false);
+  const [editHeaderTitle, setEditHeaderTitle] = useState(sectionTitle);
+  const [editHeaderSubtitle, setEditHeaderSubtitle] = useState(sectionSubtitle);
+
+  // Determine active members list
+  const rawMembers = (dbCredits && dbCredits.length > 0)
+    ? dbCredits
+    : TEAM_MEMBERS;
+
+  const humanMembers = rawMembers.filter((m: any) => {
     const handle = (m.handle || '').toLowerCase();
     const id = (m.id || '').toLowerCase();
     const name = (m.name || '').toLowerCase();
     const role = (m.role || '').toLowerCase();
     const isBot = handle.includes('bot') || id.includes('bot') || name.includes('bot') || role.includes('bot') || role === 'lady';
-
     return !isBot;
   });
 
-  const filteredMembers = humanMembers.filter((m) => {
+  const filteredMembers = humanMembers.filter((m: any) => {
     const role = (m.role || '');
-
-    // Role category filter
     if (filter === 'all') return true;
     if (filter === 'developer') {
-      return m.type === 'core' || m.type === 'developer' || role.includes('Developer');
+      return m.type === 'core' || m.type === 'developer' || role.includes('Developer') || role.includes('Founder');
     }
     if (filter === 'maintainer') {
       return m.type === 'maintainer' || (role.includes('Maintainer') && !role.includes('Ex-'));
@@ -133,6 +207,7 @@ export const TeamSection: React.FC = () => {
       return (
         m.type === 'moderator' ||
         m.type === 'tester' ||
+        m.type === 'community' ||
         m.type === 'ex' ||
         role.includes('Moderator') ||
         role.includes('Tester') ||
@@ -159,6 +234,241 @@ export const TeamSection: React.FC = () => {
     };
   }, []);
 
+  const openAddMemberDialog = () => {
+    setEditingMember(null);
+    setEditName('');
+    setEditHandle('');
+    setEditRole('Maintainer');
+    setEditType('maintainer');
+    setEditAvatarUrl('');
+    setEditBio('');
+    setEditGithubUrl('');
+    setEditTelegramUrl('');
+    setEditOrder(humanMembers.length + 1);
+    setIsEditModalOpen(true);
+  };
+
+  const openEditMemberDialog = (member: any) => {
+    setEditingMember(member);
+    setEditName(member.name || '');
+    setEditHandle(member.handle || '');
+    setEditRole(member.role || 'Maintainer');
+    setEditType(member.type || 'maintainer');
+    setEditAvatarUrl(member.avatarUrl || '');
+    setEditBio(member.bio || '');
+    setEditGithubUrl(member.githubUrl || '');
+    setEditTelegramUrl(member.telegramUrl || '');
+    setEditOrder(member.order ?? 1);
+    setIsEditModalOpen(true);
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsCompressing(true);
+    try {
+      const compressed = await compressImage(file, 400, 400, 0.85);
+      setEditAvatarUrl(compressed);
+      toast({
+        title: 'Avatar Processed',
+        description: `${file.name} ready to save.`,
+      });
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Upload Error',
+        description: err.message || 'Could not process avatar image.',
+      });
+    } finally {
+      setIsCompressing(false);
+    }
+  };
+
+  const handleSaveMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db || !editName.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'Name Required',
+        description: 'Please provide a name for this contributor.',
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // If dbCredits is empty, seed everything first to prevent losing initial team members
+      if (!dbCredits || dbCredits.length === 0) {
+        let seedOrder = 1;
+        for (const tm of TEAM_MEMBERS) {
+          const sId = `team_${tm.id || seedOrder}`;
+          await setDoc(doc(db, 'credits', sId), {
+            id: sId,
+            name: tm.name,
+            handle: tm.handle || '',
+            role: tm.role || 'Contributor',
+            type: tm.type || 'maintainer',
+            avatarUrl: tm.avatarUrl || '',
+            bio: tm.bio || '',
+            githubUrl: tm.githubUrl || '',
+            telegramUrl: tm.telegramUrl || '',
+            order: seedOrder++,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          }, { merge: true });
+        }
+      }
+
+      const memberId = editingMember?.id || `credit_${Date.now()}`;
+      const memberRef = doc(db, 'credits', memberId);
+
+      await setDoc(memberRef, {
+        id: memberId,
+        name: editName.trim(),
+        handle: editHandle.trim(),
+        role: editRole.trim() || 'Contributor',
+        type: editType || 'maintainer',
+        avatarUrl: editAvatarUrl.trim(),
+        bio: editBio.trim(),
+        githubUrl: editGithubUrl.trim(),
+        telegramUrl: editTelegramUrl.trim(),
+        order: Number(editOrder) || 1,
+        updatedAt: serverTimestamp(),
+        createdAt: editingMember?.createdAt || serverTimestamp(),
+      }, { merge: true });
+
+      toast({
+        title: editingMember ? 'Member Updated' : 'Member Added to Credits',
+        description: `"${editName}" has been successfully saved.`,
+      });
+
+      setIsEditModalOpen(false);
+    } catch (err: any) {
+      console.error('Error saving credit member:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Save Failed',
+        description: err.message || 'Could not save member to Firestore.',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteMember = async (member: any) => {
+    if (!db) return;
+    if (!confirm(`Are you sure you want to delete "${member.name}" from the credits section?`)) return;
+
+    try {
+      // If collection is not seeded yet, seed first, then delete this specific item
+      if (!dbCredits || dbCredits.length === 0) {
+        let seedOrder = 1;
+        for (const tm of TEAM_MEMBERS) {
+          const sId = `team_${tm.id || seedOrder}`;
+          if (tm.name === member.name || tm.handle === member.handle) {
+            seedOrder++;
+            continue; // Skip the one being deleted!
+          }
+          await setDoc(doc(db, 'credits', sId), {
+            id: sId,
+            name: tm.name,
+            handle: tm.handle || '',
+            role: tm.role || 'Contributor',
+            type: tm.type || 'maintainer',
+            avatarUrl: tm.avatarUrl || '',
+            bio: tm.bio || '',
+            githubUrl: tm.githubUrl || '',
+            telegramUrl: tm.telegramUrl || '',
+            order: seedOrder++,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          }, { merge: true });
+        }
+      } else {
+        const docId = member.id || `team_${member.id}`;
+        await deleteDoc(doc(db, 'credits', docId));
+      }
+
+      toast({
+        title: 'Member Deleted',
+        description: `"${member.name}" was removed from the credit section.`,
+      });
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Delete Failed',
+        description: err.message || 'Could not remove member.',
+      });
+    }
+  };
+
+  const handleSeedAllToFirestore = async () => {
+    if (!db) return;
+    setIsSeeding(true);
+    try {
+      let orderIndex = 1;
+      for (const m of TEAM_MEMBERS) {
+        const creditId = `team_${m.id || orderIndex}`;
+        await setDoc(doc(db, 'credits', creditId), {
+          id: creditId,
+          name: m.name,
+          handle: m.handle || '',
+          role: m.role || 'Contributor',
+          type: m.type || 'maintainer',
+          avatarUrl: m.avatarUrl || '',
+          bio: m.bio || '',
+          githubUrl: m.githubUrl || '',
+          telegramUrl: m.telegramUrl || '',
+          order: orderIndex++,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      }
+
+      toast({
+        title: 'Credits Synchronized to Firestore',
+        description: `All ${TEAM_MEMBERS.length} members loaded into Firestore! You can now edit or delete any of them.`,
+      });
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Sync Failed',
+        description: err.message,
+      });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  const handleSaveHeader = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db) return;
+
+    setIsSaving(true);
+    try {
+      await setDoc(doc(db, 'settings', 'credits_header'), {
+        title: editHeaderTitle.trim() || 'CREDITS & MAINTAINERS',
+        subtitle: editHeaderSubtitle.trim() || 'The developers, device maintainers, and contributors driving the SKY ecosystem.',
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+      toast({
+        title: 'Section Header Updated',
+        description: 'New title & tagline saved.',
+      });
+      setIsHeaderModalOpen(false);
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Save Failed',
+        description: err.message,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const categories: { id: FilterType; label: string; icon: React.ReactNode; count: number }[] = [
     {
       id: 'all',
@@ -170,22 +480,23 @@ export const TeamSection: React.FC = () => {
       id: 'developer',
       label: 'Developers',
       icon: <Terminal className="w-4 h-4" />,
-      count: humanMembers.filter((m) => m.type === 'core' || m.type === 'developer' || (m.role || '').includes('Developer')).length,
+      count: humanMembers.filter((m: any) => m.type === 'core' || m.type === 'developer' || (m.role || '').includes('Developer') || (m.role || '').includes('Founder')).length,
     },
     {
       id: 'maintainer',
       label: 'Maintainers',
       icon: <Wrench className="w-4 h-4" />,
-      count: humanMembers.filter((m) => m.type === 'maintainer' || ((m.role || '').includes('Maintainer') && !(m.role || '').includes('Ex-'))).length,
+      count: humanMembers.filter((m: any) => m.type === 'maintainer' || ((m.role || '').includes('Maintainer') && !(m.role || '').includes('Ex-'))).length,
     },
     {
       id: 'community',
       label: 'Community & QA',
       icon: <ShieldCheck className="w-4 h-4" />,
       count: humanMembers.filter(
-        (m) =>
+        (m: any) =>
           m.type === 'moderator' ||
           m.type === 'tester' ||
+          m.type === 'community' ||
           m.type === 'ex' ||
           (m.role || '').includes('Moderator') ||
           (m.role || '').includes('Tester') ||
@@ -196,6 +507,71 @@ export const TeamSection: React.FC = () => {
 
   return (
     <section ref={sectionRef} className="py-6 sm:py-10 px-4 sm:px-6 max-w-7xl mx-auto space-y-8">
+      {/* Section Header */}
+      <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 pb-4 border-b border-[#EBE4CF] dark:border-[#36342A]">
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#FDE694]/40 text-[#121212] dark:text-[#FDE694] border border-[#FDE694]/50">
+            <Users className="w-3.5 h-3.5" />
+            <span>COMMUNITY ACKNOWLEDGEMENTS</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-[#1C1B17] dark:text-[#F4EFE6]">
+            {sectionTitle}
+          </h2>
+          <p className="text-xs sm:text-sm text-[#787567] dark:text-[#BDB8A4] max-w-2xl leading-relaxed">
+            {sectionSubtitle}
+          </p>
+        </div>
+
+        {/* Super Admin Top Actions */}
+        {isSuperAdmin && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              onClick={openAddMemberDialog}
+              className="rounded-2xl text-xs font-black uppercase tracking-wider bg-[#FDE694] text-[#121212] hover:bg-[#FCE076] gap-2 shadow-xs cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Member</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setEditHeaderTitle(sectionTitle);
+                setEditHeaderSubtitle(sectionSubtitle);
+                setIsHeaderModalOpen(true);
+              }}
+              className="rounded-2xl text-xs font-bold border-[#EBE4CF] dark:border-[#36342A] gap-1.5 cursor-pointer bg-[#FAF3DD] dark:bg-[#1A1914]"
+            >
+              <Settings2 className="w-3.5 h-3.5" />
+              <span>Edit Header</span>
+            </Button>
+
+            {(!dbCredits || dbCredits.length === 0) && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSeedAllToFirestore}
+                disabled={isSeeding}
+                className="rounded-2xl text-xs font-bold border-amber-500/40 text-amber-900 dark:text-amber-300 gap-1.5 cursor-pointer"
+              >
+                {isSeeding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                <span>Sync Team to Firestore</span>
+              </Button>
+            )}
+
+            <Link
+              href="/dashboard?tab=credits"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold bg-[#FAF3DD] dark:bg-[#1A1914] border border-[#EBE4CF] dark:border-[#36342A] text-[#1C1B17] dark:text-[#F4EFE6] hover:bg-[#FDE694]/20 transition-colors"
+            >
+              <span>Full Manager</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        )}
+      </div>
+
       {/* Role Category Toggles */}
       <div className="flex justify-start md:justify-center items-center gap-2 sm:gap-3 overflow-x-auto pb-2 scrollbar-none">
         {categories.map((cat) => (
@@ -223,10 +599,9 @@ export const TeamSection: React.FC = () => {
         ))}
       </div>
 
-      {/* Grid Container */}
+      {/* Members Grid Container */}
       {filteredMembers.length === 0 ? (
         <div className="text-center py-16 sm:py-20 px-6 bg-gradient-to-b from-[#FFFDF7] to-[#FAF5E6] dark:from-[#181712] dark:to-[#12110D] rounded-3xl border border-[#EBE4CF] dark:border-[#2C2A22] shadow-xs flex flex-col items-center justify-center space-y-5">
-          {/* Illustration Container */}
           <div className="relative flex items-center justify-center">
             <div className="absolute inset-0 bg-[#FDE694]/20 rounded-full blur-xl transform scale-125" />
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-br from-[#FFF8E1] to-[#FAF0CF] dark:from-[#1C1A14] dark:to-[#151410] border border-[#EBE4CF] dark:border-[#36342A] flex items-center justify-center text-[#121212] dark:text-[#FDE694] shadow-sm relative z-10">
@@ -253,11 +628,11 @@ export const TeamSection: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5 sm:gap-6">
-          {filteredMembers.map((member) => (
+          {filteredMembers.map((member: any) => (
             <div
               key={member.id || member.handle || member.name}
               style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 250px' }}
-              className="bg-gradient-to-b from-[#FFFDF7] to-[#FAF5E6] dark:from-[#181712] dark:to-[#12110D] rounded-3xl p-5 sm:p-6 border border-[#EBE4CF] dark:border-[#2C2A22] hover:border-[#FDE694]/60 dark:hover:border-[#FDE694]/40 shadow-xs hover:shadow-xl hover:-translate-y-1 hover:scale-[1.01] transition-all duration-300 ease-out flex flex-col justify-between"
+              className="bg-gradient-to-b from-[#FFFDF7] to-[#FAF5E6] dark:from-[#181712] dark:to-[#12110D] rounded-3xl p-5 sm:p-6 border border-[#EBE4CF] dark:border-[#2C2A22] hover:border-[#FDE694]/60 dark:hover:border-[#FDE694]/40 shadow-xs hover:shadow-xl hover:-translate-y-1 hover:scale-[1.01] transition-all duration-300 ease-out flex flex-col justify-between group"
             >
               <div>
                 <div className="flex gap-4 items-start">
@@ -267,6 +642,28 @@ export const TeamSection: React.FC = () => {
                       <h3 className="text-lg sm:text-xl font-extrabold text-[#49473E] dark:text-[#F4EFE6] break-words line-clamp-1">
                         {member.name}
                       </h3>
+
+                      {/* Super Admin Quick Actions on Card */}
+                      {isSuperAdmin && (
+                        <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={() => openEditMemberDialog(member)}
+                            className="p-1.5 rounded-lg bg-[#FAF3DD] dark:bg-[#201F1A] hover:bg-[#FDE694] text-[#121212] dark:text-[#F4EFE6] hover:text-[#121212] border border-[#EBE4CF] dark:border-[#36342A] transition-colors cursor-pointer"
+                            title="Edit Member Content"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMember(member)}
+                            className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 transition-colors cursor-pointer"
+                            title="Delete Member"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="mt-2">
@@ -284,34 +681,315 @@ export const TeamSection: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-[#EBE4CF]/40 dark:border-[#36342A]/40">
-                {member.githubUrl && (
-                  <a
-                    href={member.githubUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center min-h-[44px] gap-2 px-3.5 py-2 rounded-xl bg-[#FFF8E1] dark:bg-[#1C1A14] text-xs font-bold text-[#49473E] dark:text-[#F4EFE6] hover:text-[#121212] dark:hover:text-[#FDE694] hover:bg-[#FDE694]/30 border border-[#EBE4CF] dark:border-[#2C2A22] transition-colors active:scale-95"
-                  >
-                    <Github className="w-4 h-4" />
-                    <span>GitHub</span>
-                  </a>
-                )}
-                {member.telegramUrl && (
-                  <a
-                    href={member.telegramUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center min-h-[44px] gap-2 px-3.5 py-2 rounded-xl bg-[#FFF8E1] dark:bg-[#1C1A14] text-xs font-bold text-[#49473E] dark:text-[#F4EFE6] hover:text-[#121212] dark:hover:text-[#FDE694] hover:bg-[#FDE694]/30 border border-[#EBE4CF] dark:border-[#2C2A22] transition-colors active:scale-95"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span>Telegram</span>
-                  </a>
+              <div className="flex flex-wrap items-center justify-between gap-2 mt-4 pt-3 border-t border-[#EBE4CF]/40 dark:border-[#36342A]/40">
+                <div className="flex items-center gap-2">
+                  {member.githubUrl && (
+                    <a
+                      href={member.githubUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center min-h-[40px] gap-2 px-3.5 py-1.5 rounded-xl bg-[#FFF8E1] dark:bg-[#1C1A14] text-xs font-bold text-[#49473E] dark:text-[#F4EFE6] hover:text-[#121212] dark:hover:text-[#FDE694] hover:bg-[#FDE694]/30 border border-[#EBE4CF] dark:border-[#2C2A22] transition-colors active:scale-95"
+                    >
+                      <Github className="w-3.5 h-3.5" />
+                      <span>GitHub</span>
+                    </a>
+                  )}
+                  {member.telegramUrl && (
+                    <a
+                      href={member.telegramUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center min-h-[40px] gap-2 px-3.5 py-1.5 rounded-xl bg-[#FFF8E1] dark:bg-[#1C1A14] text-xs font-bold text-[#49473E] dark:text-[#F4EFE6] hover:text-[#121212] dark:hover:text-[#FDE694] hover:bg-[#FDE694]/30 border border-[#EBE4CF] dark:border-[#2C2A22] transition-colors active:scale-95"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Telegram</span>
+                    </a>
+                  )}
+                </div>
+
+                {/* Direct edit button for mobile/touch */}
+                {isSuperAdmin && (
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEditMemberDialog(member)}
+                      className="text-xs font-bold gap-1 rounded-xl h-8 text-[#787567] hover:text-[#121212] dark:hover:text-[#FDE694]"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      <span>Edit Content</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteMember(member)}
+                      className="text-xs font-bold gap-1 rounded-xl h-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Delete</span>
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Edit Header Modal */}
+      <Dialog open={isHeaderModalOpen} onOpenChange={setIsHeaderModalOpen}>
+        <DialogContent className="max-w-md rounded-3xl bg-[#FAF3DD] dark:bg-[#1A1914] border border-[#EBE4CF] dark:border-[#36342A] p-6 sm:p-8">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black uppercase tracking-tight text-[#1C1B17] dark:text-[#F4EFE6]">
+              Edit Credit Section Header
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveHeader} className="space-y-4 mt-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-[#49473E] dark:text-[#C5C0AF]">
+                Section Title
+              </Label>
+              <Input
+                value={editHeaderTitle}
+                onChange={(e) => setEditHeaderTitle(e.target.value)}
+                placeholder="CREDITS & MAINTAINERS"
+                required
+                className="rounded-xl bg-white/70 dark:bg-black/40 border-[#EBE4CF] dark:border-[#36342A] text-xs font-medium"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-[#49473E] dark:text-[#C5C0AF]">
+                Tagline / Description
+              </Label>
+              <Textarea
+                value={editHeaderSubtitle}
+                onChange={(e) => setEditHeaderSubtitle(e.target.value)}
+                placeholder="The developers, device maintainers, and contributors driving the SKY ecosystem."
+                className="rounded-xl bg-white/70 dark:bg-black/40 border-[#EBE4CF] dark:border-[#36342A] text-xs min-h-[70px]"
+              />
+            </div>
+
+            <div className="pt-4 border-t border-[#EBE4CF] dark:border-[#36342A] flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsHeaderModalOpen(false)}
+                className="rounded-xl text-xs font-bold cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="rounded-2xl text-xs font-black uppercase tracking-wider bg-[#FDE694] text-[#121212] hover:bg-[#FCE076] gap-2 cursor-pointer shadow-xs"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                <span>Save Header</span>
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit / Add Member Dialog */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="max-w-lg rounded-3xl bg-[#FAF3DD] dark:bg-[#1A1914] border border-[#EBE4CF] dark:border-[#36342A] p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black uppercase tracking-tight text-[#1C1B17] dark:text-[#F4EFE6]">
+              {editingMember ? `Edit Member: ${editingMember.name}` : 'Add New Credit Member'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveMember} className="space-y-4 mt-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-[#49473E] dark:text-[#C5C0AF]">
+                  Full Name *
+                </Label>
+                <Input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Amit, Tushar, Dhanush..."
+                  required
+                  className="rounded-xl bg-white/70 dark:bg-black/40 border-[#EBE4CF] dark:border-[#36342A] text-xs font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-[#49473E] dark:text-[#C5C0AF]">
+                  Telegram / Handle
+                </Label>
+                <Input
+                  value={editHandle}
+                  onChange={(e) => setEditHandle(e.target.value)}
+                  placeholder="@username"
+                  className="rounded-xl bg-white/70 dark:bg-black/40 border-[#EBE4CF] dark:border-[#36342A] text-xs font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-[#49473E] dark:text-[#C5C0AF]">
+                  Role Title (e.g. Core Developer + Maintainer)
+                </Label>
+                <Input
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value)}
+                  placeholder="Core Developer + Maintainer"
+                  className="rounded-xl bg-white/70 dark:bg-black/40 border-[#EBE4CF] dark:border-[#36342A] text-xs font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-[#49473E] dark:text-[#C5C0AF]">
+                  Category Filter
+                </Label>
+                <select
+                  value={editType}
+                  onChange={(e) => setEditType(e.target.value as any)}
+                  className="w-full px-3 py-2 rounded-xl bg-white/70 dark:bg-black/40 border border-[#EBE4CF] dark:border-[#36342A] text-xs font-medium text-[#1C1B17] dark:text-[#F4EFE6] focus:outline-none"
+                >
+                  <option value="developer">Developer</option>
+                  <option value="maintainer">Maintainer</option>
+                  <option value="community">Community / QA</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Avatar upload / link */}
+            <div className="space-y-3 p-4 rounded-2xl bg-white/40 dark:bg-black/20 border border-[#EBE4CF] dark:border-[#36342A]">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-[#49473E] dark:text-[#C5C0AF]">
+                  Avatar Image
+                </Label>
+                {editAvatarUrl && (
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <Check className="w-3 h-3" /> Avatar Ready
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <label className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-dashed border-[#FDE694] dark:border-[#FDE694]/40 bg-[#FDE694]/15 hover:bg-[#FDE694]/25 text-[#121212] dark:text-[#FDE694] text-xs font-bold cursor-pointer transition-colors">
+                  {isCompressing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                  <span>{isCompressing ? 'Compressing...' : 'Upload Image File'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={isCompressing}
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              <div>
+                <span className="text-[10px] font-bold text-[#787567] dark:text-[#9C9888] block mb-1">
+                  Or enter direct URL:
+                </span>
+                <Input
+                  value={editAvatarUrl}
+                  onChange={(e) => setEditAvatarUrl(e.target.value)}
+                  placeholder="https://... or /admins/username/pfp.jpg"
+                  className="rounded-xl bg-white/70 dark:bg-black/40 border-[#EBE4CF] dark:border-[#36342A] text-xs"
+                />
+              </div>
+
+              {editAvatarUrl && (
+                <div className="flex items-center gap-3 pt-1">
+                  <div className="w-12 h-12 rounded-xl overflow-hidden border border-[#EBE4CF] dark:border-[#36342A] bg-black/40">
+                    <img
+                      src={editAvatarUrl}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = 'https://placehold.co/100x100/222/white?text=Avatar';
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs text-[#787567] dark:text-[#BDB8A4]">
+                    Avatar preview confirmed
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-[#49473E] dark:text-[#C5C0AF]">
+                Bio / Contribution Details
+              </Label>
+              <Textarea
+                value={editBio}
+                onChange={(e) => setEditBio(e.target.value)}
+                placeholder="Core developer maintaining DT/kernel work, custom builds, and device trees..."
+                className="rounded-xl bg-white/70 dark:bg-black/40 border-[#EBE4CF] dark:border-[#36342A] text-xs min-h-[70px]"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-[#49473E] dark:text-[#C5C0AF]">
+                  GitHub Profile Link
+                </Label>
+                <Input
+                  value={editGithubUrl}
+                  onChange={(e) => setEditGithubUrl(e.target.value)}
+                  placeholder="https://github.com/..."
+                  className="rounded-xl bg-white/70 dark:bg-black/40 border-[#EBE4CF] dark:border-[#36342A] text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-[#49473E] dark:text-[#C5C0AF]">
+                  Telegram Link
+                </Label>
+                <Input
+                  value={editTelegramUrl}
+                  onChange={(e) => setEditTelegramUrl(e.target.value)}
+                  placeholder="https://t.me/..."
+                  className="rounded-xl bg-white/70 dark:bg-black/40 border-[#EBE4CF] dark:border-[#36342A] text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-[#49473E] dark:text-[#C5C0AF]">
+                Display Order Number
+              </Label>
+              <Input
+                type="number"
+                value={editOrder}
+                onChange={(e) => setEditOrder(Number(e.target.value))}
+                min={1}
+                max={999}
+                className="rounded-xl bg-white/70 dark:bg-black/40 border-[#EBE4CF] dark:border-[#36342A] text-xs"
+              />
+            </div>
+
+            <div className="pt-4 border-t border-[#EBE4CF] dark:border-[#36342A] flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsEditModalOpen(false)}
+                className="rounded-xl text-xs font-bold cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving || isCompressing}
+                className="rounded-2xl text-xs font-black uppercase tracking-wider bg-[#FDE694] text-[#121212] hover:bg-[#FCE076] gap-2 cursor-pointer shadow-xs"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                <span>{editingMember ? 'Update Member' : 'Add to Credits'}</span>
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 };

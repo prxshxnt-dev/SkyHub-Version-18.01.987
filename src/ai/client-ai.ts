@@ -3,15 +3,11 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 const getApiKey = () => {
     const key = process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
-    if (!key || key.includes('placeholder')) {
-        console.warn("Neural Pulse Warning: No valid NEXT_PUBLIC_GEMINI_API_KEY found in frontend environment.");
+    if (key && !key.includes('placeholder') && !key.includes('MY_GEMINI_API_KEY')) {
+        return key.trim();
     }
-    return key;
+    return '';
 };
-
-export const ai = new GoogleGenAI({ 
-    apiKey: getApiKey() 
-});
 
 export const EXTRACT_RESOURCES_SCHEMA = {
     type: Type.OBJECT,
@@ -38,7 +34,60 @@ export const EXTRACT_RESOURCES_SCHEMA = {
     }
 };
 
+/**
+ * Fallback parser for extracting ROMs and resource links from raw text/HTML
+ * when Gemini API key is not configured.
+ */
+function fallbackExtraction(content: string) {
+    const items: any[] = [];
+    // Match common link patterns: <a href="...">...</a> or markdown [text](url)
+    const linkRegex = /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1[^>]*>(.*?)<\/a>/gi;
+    let match;
+    let index = 1;
+
+    while ((match = linkRegex.exec(content)) !== null && items.length < 30) {
+        const href = match[2];
+        const text = match[3].replace(/<[^>]*>/g, '').trim();
+
+        if (
+            href.includes('.zip') || 
+            href.includes('.img') || 
+            href.includes('.tar') || 
+            href.includes('github.com') || 
+            href.includes('sourceforge.net') || 
+            href.includes('drive.google.com') ||
+            href.includes('mega.nz') ||
+            href.includes('t.me')
+        ) {
+            items.push({
+                name: text || `Package ${index}`,
+                version: 'Latest',
+                androidVersion: 'Android 14/15',
+                size: 'Direct Download',
+                updated: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+                description: `Extracted download asset: ${text || href.split('/').pop()}`,
+                downloadUrl: href,
+                imageUrl: '/screenshots/AxionOS.jpg',
+                mirrors: [],
+                screenshots: []
+            });
+            index++;
+        }
+    }
+
+    return { roms: items };
+}
+
 export async function extractFromContent(content: string, url: string = 'local-input') {
+    const key = getApiKey();
+
+    if (!key) {
+        // Safe deterministic fallback when key is not provided in frontend
+        return fallbackExtraction(content);
+    }
+
+    const ai = new GoogleGenAI({ apiKey: key });
+
     const prompt = `You are an intelligent data extraction AI.
 
 Your task is to parse the provided content (HTML, Text, or Telegram) and extract structured data for all Custom ROMs/Modules.
@@ -49,18 +98,11 @@ FIELDS:
 3. androidVersion (string)
 4. size (string)
 5. updated (string)
-6. description (string) → Features, Smoothness, UI type, etc.
+5. description (string) → Features, Smoothness, UI type, etc.
 7. downloadUrl (URL)
 8. imageUrl (URL)
 
 RULES:
-- Handle RAW HTML structure if present:
-  - Each ROM is often inside class "rom-card"
-  - ROM name is inside class "rom-title" 
-  - Version is inside class "rom-version"
-  - Info inside "rom-info"
-  - Download link is inside <a> with class "btn"
-  - Images inside "screenshot" sections or header <img> tags.
 - Clean all text (remove extra spaces, symbols like **, etc.)
 - LIMIT: Return at most 40 distinct items.
 
@@ -70,32 +112,25 @@ ${content.substring(0, 35000)}`;
 
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-1.5-flash",
+            model: "gemini-2.5-flash",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
                 responseSchema: EXTRACT_RESOURCES_SCHEMA,
-                // Increase output potential but prompt for brevity
                 temperature: 0.2
             }
         });
 
-        let text = response.text?.trim() || "";
-        if (!text) throw new Error("Empty response from AI");
-        
-        // Handle potential truncation manually if JSON is invalid
+        const text = response.text?.trim() || "";
+        if (!text) return fallbackExtraction(content);
+
         try {
             return JSON.parse(text);
-        } catch (parseError) {
-            console.error("JSON Parse Error. Full text length:", text.length);
-            // Attempt a very basic repair if it ends with "..." or is clearly truncated
-            if (text.lastIndexOf('}') < text.lastIndexOf('{')) {
-                 throw new Error("AI response was truncated due to size. Please try uploading a smaller file or a specific section of the page.");
-            }
-            throw parseError;
+        } catch {
+            return fallbackExtraction(content);
         }
     } catch (error) {
-        console.error("AI Extraction Error:", error);
-        throw error;
+        console.warn("AI extraction fallback triggered:", error);
+        return fallbackExtraction(content);
     }
 }

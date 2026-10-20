@@ -112,6 +112,8 @@ import { extractFromContent } from '@/ai/client-ai';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import SuperAdminPanel from '@/components/admin/SuperAdminPanel';
 import BackupExporter from '@/components/admin/BackupExporter';
+import { ShowcaseManager } from '@/components/admin/ShowcaseManager';
+import { CreditsManager } from '@/components/admin/CreditsManager';
 
 const HARDCODED_SUPERADMIN = 'meinkxun@gmail.com';
 const HUB_OWNERS = [HARDCODED_SUPERADMIN, 'skyhubowner@gmail.com'];
@@ -307,6 +309,8 @@ export default function DashboardPage() {
     { id: 'profile', label: 'My Profile', icon: <UserCircle className="w-4 h-4" />, permission: 'all' },
     { id: 'themes', label: 'Themes', icon: <Palette className="w-4 h-4" />, permission: 'superAdminOnly' },
     { id: 'layout', label: 'Site Layout', icon: <Settings2 className="w-4 h-4" />, permission: 'superAdminOnly' },
+    { id: 'showcase', label: 'ROM Showcase (Axion & Slides)', icon: <LucideImage className="w-4 h-4 text-blue-500" />, permission: 'adminOnly' },
+    { id: 'credits', label: 'Credits & Team Below Walls', icon: <Users className="w-4 h-4 text-emerald-500" />, permission: 'superAdminOnly' },
     { id: 'roms', label: 'Custom ROMs', icon: <Package className="w-4 h-4" />, permission: 'canManageRoms' },
     { id: 'recoveries', label: 'Recoveries', icon: <Archive className="w-4 h-4" />, permission: 'canManageRoms' },
     { id: 'modules', label: 'Modules', icon: <Smartphone className="w-4 h-4" />, permission: 'canManageModules' },
@@ -1350,6 +1354,10 @@ export default function DashboardPage() {
                 </div>
               </Card>
             </div>
+          ) : activeTab === 'showcase' ? (
+            <ShowcaseManager />
+          ) : activeTab === 'credits' ? (
+            <CreditsManager />
           ) : activeTab === 'ai-extract' ? (
             <div className="space-y-8">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-6">

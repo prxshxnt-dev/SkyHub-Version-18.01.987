@@ -192,9 +192,48 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name"]
+    },
+    "ShowcaseScreenshot": {
+      "title": "ShowcaseScreenshot",
+      "description": "ROM showcase screenshot slide item.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "themeColor": { "type": "string" },
+        "accentBg": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["title", "imageUrl"]
+    },
+    "CreditMember": {
+      "title": "CreditMember",
+      "description": "Team member and credit entry below wallpapers.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "type": { "type": "string", "enum": ["developer", "maintainer", "community"] },
+        "avatarUrl": { "type": "string" },
+        "bio": { "type": "string" },
+        "githubUrl": { "type": "string" },
+        "telegramUrl": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["name", "role"]
     }
   },
   "firestore": {
+    "/screenshots/{screenshotId}": {
+      "schema": "ShowcaseScreenshot",
+      "description": "Collection of ROM showcase screenshots and Axion AOSP images."
+    },
+    "/credits/{creditId}": {
+      "schema": "CreditMember",
+      "description": "Collection of credit members and maintainers."
+    },
     "/recoveries/{recoveryId}": {
       "schema": "CustomRecovery",
       "description": "Collection of Custom Recoveries."

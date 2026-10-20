@@ -113,19 +113,17 @@ export const MobileNavDock: React.FC<MobileNavDockProps> = ({
               </span>
             </button>
 
-            {(isAdmin || isSuperAdmin) && (
-              <Link
-                href="/dashboard"
-                className="relative flex flex-col items-center justify-center py-1 px-1.5 text-center"
-              >
-                <div className="p-1.5 rounded-full bg-red-500/20 text-red-500">
-                  {isSuperAdmin ? <Crown size={18} /> : <Shield size={18} />}
-                </div>
-                <span className="text-[9px] font-black uppercase text-red-500 tracking-tighter mt-0.5">
-                  Admin
-                </span>
-              </Link>
-            )}
+            <Link
+              href="/dashboard"
+              className="relative flex-1 flex flex-col items-center justify-center py-1 text-center group"
+            >
+              <div className="p-1.5 rounded-full text-amber-600 dark:text-[#FDE694] hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                {isSuperAdmin ? <Crown size={19} /> : <Shield size={19} />}
+              </div>
+              <span className="text-[9px] font-bold tracking-tight mt-0.5 text-[#787567] dark:text-[#8E8A7A]">
+                Admin
+              </span>
+            </Link>
           </div>
         </motion.nav>
       )}

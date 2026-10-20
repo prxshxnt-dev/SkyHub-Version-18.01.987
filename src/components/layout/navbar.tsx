@@ -252,8 +252,8 @@ export function Navbar() {
             <Heart className="w-4 h-4 fill-current" />
           </button>
 
-          {/* Admin Workspace */}
-          {workspace && (
+          {/* Admin Workspace / Terminal Link */}
+          {workspace ? (
             <Link
               href="/dashboard"
               className={cn(
@@ -263,6 +263,15 @@ export function Navbar() {
             >
               <workspace.icon className="w-3.5 h-3.5" />
               <span>{workspace.label}</span>
+            </Link>
+          ) : (
+            <Link
+              href="/dashboard"
+              title="Admin Terminal"
+              className="flex items-center gap-1.5 h-8 px-2.5 rounded-full text-xs font-bold text-[#787567] dark:text-[#BDB8A4] hover:text-[#121212] dark:hover:text-[#FDE694] hover:bg-[#EBE4CF]/60 dark:hover:bg-[#2B2A22] transition-colors cursor-pointer"
+            >
+              <Shield className="w-3.5 h-3.5 text-amber-500" />
+              <span className="hidden lg:inline">Admin</span>
             </Link>
           )}
 
@@ -340,7 +349,7 @@ export function Navbar() {
               aria-label="Toggle navigation menu"
               className="w-9 h-9 rounded-full flex items-center justify-center text-[#49473E] dark:text-[#F4EFE6] hover:bg-[#EBE4CF]/60 dark:hover:bg-[#2B2A22]"
             >
-              <AnimatedMenuX size={20} isHovered={mobileMenuOpen} />
+              <AnimatedMenuX size={20} isOpen={mobileMenuOpen} />
             </button>
           </div>
         </div>
@@ -374,17 +383,14 @@ export function Navbar() {
                 })}
               </div>
 
-              <div className="pt-2 border-t border-[#EBE4CF] dark:border-[#2C2A22] flex flex-col gap-2">
-                {workspace && (
-                  <Link
-                    href="/dashboard"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#FDE694] text-[#121212] font-extrabold text-xs"
-                  >
-                    <workspace.icon className="w-4 h-4" />
-                    <span>{workspace.label} Dashboard</span>
-                  </Link>
-                )}
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#FDE694] text-[#121212] font-extrabold text-xs"
+                >
+                  <Shield className="w-4 h-4" />
+                  <span>{workspace ? `${workspace.label} Dashboard` : 'Admin Terminal'}</span>
+                </Link>
 
                 {user ? (
                   <button
@@ -433,7 +439,6 @@ export function Navbar() {
                   </a>
                 </div>
               </div>
-            </div>
           </motion.div>
         )}
       </AnimatePresence>

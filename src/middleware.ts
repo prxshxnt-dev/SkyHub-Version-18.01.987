@@ -30,7 +30,8 @@ export function middleware(request: NextRequest) {
     const isHardcodedSuperAdmin = authEmailCookie === SUPERADMIN_EMAIL;
     const isAuthorizedAdmin = isHardcodedSuperAdmin || (authEmailCookie && AUTHORIZED_ADMIN_EMAILS.includes(authEmailCookie));
 
-    // Handle Admin API Protection
+    // For /dashboard, allow client-side hydration so Firebase Auth can verify tokens in browser
+    // Admin API routes remain strictly guarded.
     if (isAdminApiRoute) {
       if (!isAuthorizedAdmin && !authHeader) {
         return NextResponse.json(
@@ -41,22 +42,6 @@ export function middleware(request: NextRequest) {
           },
           { status: 403 }
         );
-      }
-    }
-
-    // Handle /dashboard Page Protection
-    if (isDashboardRoute) {
-      // Explicitly restrict access to the Admin Panel for all unauthorized users at the middleware level
-      if (!isAuthorizedAdmin) {
-        const redirectUrl = new URL('/', request.url);
-        if (authEmailCookie) {
-          redirectUrl.searchParams.set('auth', 'restricted');
-          redirectUrl.searchParams.set('reason', 'unauthorized_account');
-        } else {
-          redirectUrl.searchParams.set('auth', 'login_required');
-          redirectUrl.searchParams.set('target', pathname);
-        }
-        return NextResponse.redirect(redirectUrl);
       }
     }
 

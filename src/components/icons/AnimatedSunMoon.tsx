@@ -11,6 +11,7 @@ export const AnimatedSunMoon: React.FC<AnimatedSunMoonProps> = ({
   strokeWidth = 2,
   className = '',
   isDark = false,
+  isHovered,
   ...props
 }) => {
   const shouldReduceMotion = useReducedMotion();

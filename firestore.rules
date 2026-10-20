@@ -119,6 +119,21 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /screenshots/{screenshotId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /credits/{creditId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /team_members/{memberId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /posts/{postId} {
       allow read: if true;
       allow write: if isAdmin();

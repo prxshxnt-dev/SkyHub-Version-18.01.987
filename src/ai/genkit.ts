@@ -3,41 +3,33 @@ import { googleAI } from '@genkit-ai/google-genai';
 
 /**
  * Robust API key resolution for the AI Studio environment.
+ * Checks server-side environment variables with priority.
  */
-const getApiKey = () => {
-  // Priority 1: Public key (most reliable in this environment)
-  const publicApi = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-  if (publicApi && publicApi.length > 20 && !publicApi.includes('placeholder')) {
-    return publicApi.trim();
+export const getGeminiApiKey = (): string | undefined => {
+  const key = process.env.GEMINI_API_KEY || 
+              process.env.GOOGLE_GENAI_API_KEY || 
+              process.env.GOOGLE_API_KEY || 
+              process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+  if (key && key.length > 5 && !key.includes('placeholder') && !key.includes('MY_GEMINI_API_KEY')) {
+    return key.trim();
   }
-
-  // Priority 2: Standard environment variable
-  const privateApi = process.env.GEMINI_API_KEY;
-  if (privateApi && privateApi.length > 20 && !privateApi.includes('placeholder')) {
-    return privateApi.trim();
-  }
-
   return undefined;
 };
 
-const apiKey = getApiKey();
-
-if (!apiKey) {
-  console.error("AI CONFIG ERROR: No valid Gemini API key found in environment variables. Extraction will fail.");
-}
+const apiKey = getGeminiApiKey();
 
 export const ai = genkit({
   plugins: [
     googleAI(apiKey ? { apiKey } : {})
   ],
-  model: 'googleai/gemini-1.5-flash',
+  model: 'googleai/gemini-2.5-flash',
 });
 
-// Implementation of ignoreFailedSpan as requested by the user to suppress OTel noise
+// Suppress OTel telemetry noise
 try {
   if ((ai as any).telemetry) {
      (ai as any).telemetry.ignoreFailedSpan = true;
   }
-} catch (e) {
+} catch {
   // Silently ignore telemetry adjustment failures
 }

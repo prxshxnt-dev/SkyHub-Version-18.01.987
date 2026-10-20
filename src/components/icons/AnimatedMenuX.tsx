@@ -11,9 +11,11 @@ export const AnimatedMenuX: React.FC<AnimatedMenuXProps> = ({
   strokeWidth = 2,
   className = '',
   isOpen = false,
+  isHovered = false,
   ...props
 }) => {
   const shouldReduceMotion = useReducedMotion();
+  const activeOpen = isOpen || isHovered;
 
   return (
     <motion.svg
@@ -36,7 +38,7 @@ export const AnimatedMenuX: React.FC<AnimatedMenuXProps> = ({
         x2="20"
         y2="6"
         animate={
-          isOpen
+          activeOpen
             ? { x1: 5, y1: 5, x2: 19, y2: 19 }
             : { x1: 4, y1: 6, x2: 20, y2: 6 }
         }
@@ -52,7 +54,7 @@ export const AnimatedMenuX: React.FC<AnimatedMenuXProps> = ({
         x2="20"
         y2="12"
         animate={
-          isOpen
+          activeOpen
             ? { opacity: 0, scaleX: 0 }
             : { opacity: 1, scaleX: 1 }
         }
@@ -69,7 +71,7 @@ export const AnimatedMenuX: React.FC<AnimatedMenuXProps> = ({
         x2="20"
         y2="18"
         animate={
-          isOpen
+          activeOpen
             ? { x1: 5, y1: 19, x2: 19, y2: 5 }
             : { x1: 4, y1: 18, x2: 20, y2: 18 }
         }
