@@ -1,0 +1,59 @@
+{
+  "id": "/?source=pwa",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "short_name": "SKY",
+  "name": "SKY — Open-Source Smartphone & Custom ROM Ecosystem",
+  "description": "SKY is an open-source smartphone and custom ROM ecosystem. Explore official AOSP builds, kernel updates, device specs, and community maintainers.",
+  "lang": "en",
+  "dir": "ltr",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#1C1B17",
+  "theme_color": "#FDE694",
+  "categories": ["utilities", "productivity", "developer tools"],
+  "icons": [
+    {
+      "src": "/icon-maskable.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Browse ROMs",
+      "short_name": "ROMs",
+      "description": "Browse custom ROMs and kernel builds for SKY",
+      "url": "/roms?source=pwa_shortcut",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Device Specs",
+      "short_name": "Specs",
+      "description": "View POCO M6 Pro 5G / Redmi 12 5G hardware specs",
+      "url": "/device?source=pwa_shortcut",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Flashing Guides",
+      "short_name": "Guides",
+      "description": "Step-by-step firmware and fastboot installation guide",
+      "url": "/guides?source=pwa_shortcut",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
+    }
+  ]
+}

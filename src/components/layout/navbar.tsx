@@ -4,73 +4,59 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
-  Cpu, 
-  ImageIcon, 
   LogIn, 
   LogOut, 
-  Menu, 
-  Smartphone, 
-  ShieldAlert, 
-  Code, 
   Crown, 
-  Shield,
-  BookOpen, 
-  Sun, 
-  Moon, 
-  ChevronRight, 
-  Terminal, 
-  Loader2, 
+  Shield, 
+  Code,
   Heart, 
   Copy, 
   Check, 
   Send, 
-  MessageSquare, 
-  Search,
+  MessageSquare,
   Sparkles,
-  Command,
-  User as UserIcon,
-  X,
-  ExternalLink,
-  Layers
+  BookOpen,
+  Image as ImageIcon
 } from 'lucide-react';
+import { 
+  AnimatedHome,
+  AnimatedSmartphone,
+  AnimatedLayers,
+  AnimatedUsers,
+  AnimatedMessageCircle,
+  AnimatedSearch,
+  AnimatedSunMoon,
+  AnimatedMenuX
+} from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { useFirebase, useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { useSearch } from '@/context/SearchContext';
 import { signOut } from 'firebase/auth';
 import { doc } from 'firebase/firestore';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-  SheetClose
-} from "@/components/ui/sheet";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { DEFAULT_DONATION_CONFIG, SiteSettings } from '@/lib/store';
 import { AuthModal } from '@/components/auth/auth-modal';
-import { SearchOverlay } from '@/components/ui/SearchOverlay';
 
 const HUB_OWNERS = ['meinkxun@gmail.com', 'skyhubowner@gmail.com'];
 
 export function Navbar() {
   const { user, auth, firestore: db } = useFirebase();
-  const pathname = usePathname();
-  const [theme, setTheme] = useState<'light' | 'dark' | null>(null);
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [copied, setCopied] = useState(false);
+  const pathname = usePathname();
 
   const userProfileRef = useMemoFirebase(() => 
     (user && db) ? doc(db, 'users', user.uid) : null
@@ -86,7 +72,8 @@ export function Navbar() {
   const upiId = settings?.upiId || DEFAULT_DONATION_CONFIG.upiId;
   const upiAmount = settings?.upiAmount || DEFAULT_DONATION_CONFIG.upiAmount;
   const qrUrl = settings?.qrImageUrl || DEFAULT_DONATION_CONFIG.qrImageUrl;
-  const brandName = globalSettings?.brandName || 'SkyHub';
+  const qrLink = globalSettings?.supportLinks?.qrLink || qrUrl;
+  const brandName = globalSettings?.brandName || 'SKY';
   const logoUrl = settings?.logoUrl || DEFAULT_DONATION_CONFIG.logoUrl;
   const telegramChannel = globalSettings?.socialLinks?.telegramChannel || DEFAULT_DONATION_CONFIG.telegramChannelUrl;
   const telegramDiscussion = globalSettings?.socialLinks?.discussion || DEFAULT_DONATION_CONFIG.telegramDiscussionUrl;
@@ -97,388 +84,487 @@ export function Navbar() {
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('skyhub-theme') as 'light' | 'dark' | null;
-    if (savedTheme) setTheme(savedTheme);
-    else setTheme('dark');
-  }, []);
-
-  useEffect(() => {
-    if (theme) {
-      document.documentElement.classList.remove('light', 'dark');
-      document.documentElement.classList.add(theme);
-      localStorage.setItem('skyhub-theme', theme);
+    if (savedTheme) {
+      setTheme(savedTheme);
+      document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+    } else {
+      setTheme('dark');
+      document.documentElement.classList.add('dark');
     }
-  }, [theme]);
 
-  useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+    const nextTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(nextTheme);
+    document.documentElement.classList.toggle('dark', nextTheme === 'dark');
+    localStorage.setItem('skyhub-theme', nextTheme);
   };
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      toast({ title: "Signed Out", description: "Logged out of SkyHub." });
+      toast({ title: "Session Terminated", description: "Logged out of Sky Hub." });
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Logout failed." });
+      toast({ variant: "destructive", title: "Protocol Error", description: "Logout failed." });
+    }
+  };
+
+  const handleSupportClick = () => {
+    if (!upiId) {
+      toast({ title: "Configuration Error", description: "UPI ID has not been set by the admin." });
+      return;
+    }
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.location.href = `upi://pay?pa=${upiId}${upiAmount ? `&am=${upiAmount}` : ''}&cu=INR`;
+    } else {
+      setIsSupportOpen(true);
     }
   };
 
   const copyUpiId = () => {
     navigator.clipboard.writeText(upiId);
     setCopied(true);
-    toast({ title: "UPI ID Copied", description: "UPI ID copied to clipboard." });
+    toast({ title: "Registry Copied", description: "UPI ID added to clipboard." });
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const { searchQuery, setSearchQuery } = useSearch();
+
+  // Keyboard shortcut listener for search (Cmd+K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const navLinks = [
-    { name: 'ROMs', href: '/#roms', icon: Cpu },
-    { name: 'Devices', href: '/#devices', icon: Smartphone },
-    { name: 'Modules', href: '/#modules', icon: PackageIcon },
-    { name: 'Recoveries', href: '/#recoveries', icon: ShieldAlert },
+    { name: 'Home', href: '/', icon: AnimatedHome },
+    { name: 'Device', href: '/#device', icon: AnimatedSmartphone },
+    { name: 'ROMs', href: '/#roms', icon: AnimatedLayers },
+    { name: 'Team', href: '/#team', icon: AnimatedUsers },
+    { name: 'Community', href: '/#community', icon: AnimatedMessageCircle },
     { name: 'Guides', href: '/guides', icon: BookOpen },
     { name: 'Wallpapers', href: '/wallpapers', icon: ImageIcon },
   ];
 
-  function PackageIcon(props: any) {
-    return <Layers {...props} />;
-  }
+  const getWorkspaceInfo = () => {
+    if (isSuperAdmin) return { label: 'Super Admin', icon: Crown, color: 'text-amber-800 dark:text-[#FDE694] bg-[#FDE694]/20 border border-[#FDE694]/40' };
+    if (isAdminRole) return { label: 'Admin', icon: Shield, color: 'text-amber-700 dark:text-[#FDE694] bg-[#FDE694]/15 border border-[#FDE694]/30' };
+    if (isDeveloperRole) return { label: 'Developer', icon: Code, color: 'text-blue-600 bg-blue-500/10 border border-blue-500/30' };
+    return null;
+  };
+
+  const workspace = getWorkspaceInfo();
 
   return (
     <>
-      <header 
-        className={cn(
-          "fixed top-0 inset-x-0 z-50 transition-all duration-300 px-4 sm:px-6 md:px-8",
-          scrolled ? "py-3" : "py-5"
-        )}
-      >
-        <div className="max-w-7xl mx-auto">
-          <nav 
-            className={cn(
-              "flex items-center justify-between px-4 sm:px-6 py-2.5 rounded-full transition-all duration-300 border",
-              scrolled 
-                ? "glass-pill shadow-xl shadow-black/5 bg-card/85 border-border/80" 
-                : "bg-card/60 backdrop-blur-lg border-border/50 shadow-md"
+      <header className="fixed top-0 left-0 right-0 z-50 flex justify-center p-3 sm:p-5 pointer-events-none transition-all duration-300">
+        {/* Desktop Navbar */}
+        <nav
+          className={cn(
+            "hidden md:flex items-center gap-1 px-3 py-2 rounded-full pointer-events-auto transition-all duration-300 shadow-md",
+            scrolled
+              ? "bg-[#FAF3DD]/90 dark:bg-[#181714]/90 backdrop-blur-xl border border-[#EBE4CF] dark:border-[#2C2A22] shadow-lg shadow-black/5 dark:shadow-black/25"
+              : "bg-[#FAF3DD]/80 dark:bg-[#1F1E18]/80 backdrop-blur-md border border-[#EBE4CF]/80 dark:border-[#36342A]/80"
+          )}
+        >
+          {/* Brand Logo */}
+          <Link href="/" className="ml-2 mr-3 flex items-center gap-2 group cursor-pointer">
+            {logoUrl ? (
+              <img src={logoUrl} className="h-7 w-auto object-contain" alt="SKY" />
+            ) : (
+              <span className="font-black text-lg tracking-tighter text-[#1C1B17] dark:text-[#F4EFE6] flex items-center gap-1.5">
+                SKY
+                <span className="w-2 h-2 rounded-full bg-[#FDE694] group-hover:scale-125 transition-transform" />
+              </span>
             )}
-          >
-            {/* Brand Logo */}
-            <Link href="/" className="flex items-center gap-3 group shrink-0">
-              <div className="relative flex items-center justify-center">
-                {logoUrl ? (
-                  <img 
-                    src={logoUrl} 
-                    alt="SkyHub" 
-                    className="w-8 h-8 rounded-full object-cover border border-primary/40 group-hover:scale-105 transition-transform" 
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-sm shadow-primary/30 group-hover:scale-105 transition-transform">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                )}
-                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-background animate-pulse" />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-extrabold text-sm sm:text-base tracking-tight text-foreground flex items-center gap-1.5">
-                  {brandName}
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-primary/10 text-primary border border-primary/20 font-semibold uppercase tracking-wider hidden sm:inline-block">
-                    4G/5G
-                  </span>
-                </span>
-              </div>
-            </Link>
+          </Link>
 
-            {/* Desktop Navigation Links */}
-            <div className="hidden lg:flex items-center gap-1">
-              {navLinks.map((link) => {
-                const Icon = link.icon;
-                return (
-                  <Link
-                    key={link.name}
-                    href={link.href}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-200"
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    <span>{link.name}</span>
-                  </Link>
-                );
-              })}
-            </div>
+          <div className="w-px h-4 bg-[#EBE4CF] dark:bg-[#36342A] mx-1" />
 
-            {/* Right Action Tools */}
-            <div className="flex items-center gap-2 sm:gap-2.5">
-              {/* Command Search Trigger Pill */}
-              <button
-                onClick={() => setIsSearchOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground text-xs font-medium border border-border/60 transition-all duration-200 shadow-sm"
-              >
-                <Search className="w-3.5 h-3.5 text-primary" />
-                <span className="hidden sm:inline">Search</span>
-                <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-background/80 text-[10px] font-mono text-muted-foreground border border-border/40">
-                  <span>⌘</span><span>K</span>
-                </kbd>
-              </button>
-
-              {/* Support Modal Trigger */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsSupportOpen(true)}
-                className="hidden sm:inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium border-primary/30 text-primary hover:bg-primary/10 transition-colors"
-              >
-                <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500/20" />
-                <span>Support</span>
-              </Button>
-
-              {/* Theme Toggle */}
-              <button
-                onClick={toggleTheme}
-                aria-label="Toggle Theme"
-                className="w-8 h-8 rounded-full flex items-center justify-center bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60 transition-colors"
-              >
-                {theme === 'dark' ? (
-                  <Sun className="w-4 h-4 text-amber-400" />
-                ) : (
-                  <Moon className="w-4 h-4 text-sky-400" />
-                )}
-              </button>
-
-              {/* User / Auth State */}
-              {user ? (
-                <div className="flex items-center gap-1.5">
-                  {(isSuperAdmin || isAdminRole || isDeveloperRole) && (
-                    <Link href="/dashboard">
-                      <Button 
-                        size="sm" 
-                        variant="default"
-                        className="h-8 px-3 rounded-full bg-primary text-primary-foreground text-xs font-semibold shadow-sm hover:opacity-90"
-                      >
-                        <Shield className="w-3.5 h-3.5 mr-1" />
-                        <span>Admin</span>
-                      </Button>
-                    </Link>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleLogout}
-                    className="w-8 h-8 p-0 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                    title="Sign Out"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  size="sm"
-                  onClick={() => setIsAuthOpen(true)}
-                  className="h-8 px-3.5 rounded-full bg-primary text-primary-foreground font-semibold text-xs shadow-sm hover:opacity-90 transition-opacity"
-                >
-                  <LogIn className="w-3.5 h-3.5 mr-1.5" />
-                  <span>Sign In</span>
-                </Button>
-              )}
-
-              {/* Mobile Drawer Trigger */}
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden w-8 h-8 rounded-full flex items-center justify-center bg-muted/60 hover:bg-muted text-foreground border border-border/60 transition-colors"
-                aria-label="Open Menu"
-              >
-                <Menu className="w-4 h-4" />
-              </button>
-            </div>
-          </nav>
-        </div>
-      </header>
-
-      {/* Mobile Drawer Navigation */}
-      <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-        <SheetContent side="right" className="w-[300px] sm:w-[360px] p-6 flex flex-col justify-between glass border-l border-border bg-card/95">
-          <SheetHeader className="text-left space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground">
-                  <Sparkles className="w-3.5 h-3.5" />
-                </div>
-                <SheetTitle className="text-lg font-black tracking-tight">{brandName}</SheetTitle>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Android customization & Snapdragon 4 Gen 2 development platform.
-            </p>
-          </SheetHeader>
-
-          {/* Nav List */}
-          <div className="py-6 space-y-2 flex-1 overflow-y-auto">
-            {navLinks.map((link, idx) => {
+          {/* Navigation Links */}
+          <div className="flex items-center gap-0.5">
+            {navLinks.map((link) => {
               const Icon = link.icon;
+              const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
               return (
                 <Link
                   key={link.name}
                   href={link.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center justify-between p-3 rounded-2xl hover:bg-muted/70 text-foreground text-sm font-medium transition-colors group"
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 group cursor-pointer",
+                    isActive
+                      ? "bg-[#FDE694] text-[#121212] font-bold shadow-xs"
+                      : "text-[#787567] dark:text-[#BDB8A4] hover:text-[#1C1B17] dark:hover:text-[#F4EFE6] hover:bg-[#EBE4CF]/60 dark:hover:bg-[#2B2A22]"
+                  )}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <span>{link.name}</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                  <Icon size={15} />
+                  <span>{link.name}</span>
                 </Link>
               );
             })}
+          </div>
+
+          <div className="w-px h-4 bg-[#EBE4CF] dark:bg-[#36342A] mx-1" />
+
+          {/* Quick Search Button */}
+          <button
+            type="button"
+            onClick={() => setIsSearchOpen(true)}
+            className="flex items-center gap-2 h-8 px-3 rounded-full bg-[#EBE4CF]/60 dark:bg-[#25241D] hover:bg-[#EBE4CF] dark:hover:bg-[#2F2E24] text-[#787567] dark:text-[#9C9888] text-xs transition-colors cursor-pointer border border-transparent hover:border-[#EBE4CF] dark:hover:border-[#36342A]"
+          >
+            <AnimatedSearch size={14} />
+            <span className="hidden lg:inline text-[11px] font-medium">Search...</span>
+            <kbd className="hidden lg:inline text-[10px] px-1.5 py-0.5 rounded bg-white/60 dark:bg-black/30 text-[#49473E] dark:text-[#BDB8A4] font-mono">
+              ⌘K
+            </kbd>
+          </button>
+
+          {/* Theme Toggle */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label="Toggle theme"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[#787567] dark:text-[#BDB8A4] hover:text-[#1C1B17] dark:hover:text-[#F4EFE6] hover:bg-[#EBE4CF]/60 dark:hover:bg-[#2B2A22] transition-colors cursor-pointer"
+          >
+            <AnimatedSunMoon size={16} />
+          </button>
+
+          {/* Support / Donate Heart */}
+          <button
+            type="button"
+            onClick={handleSupportClick}
+            aria-label="Support SKY"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 transition-colors cursor-pointer"
+          >
+            <Heart className="w-4 h-4 fill-current" />
+          </button>
+
+          {/* Admin Workspace */}
+          {workspace && (
+            <Link
+              href="/dashboard"
+              className={cn(
+                "flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer",
+                workspace.color
+              )}
+            >
+              <workspace.icon className="w-3.5 h-3.5" />
+              <span>{workspace.label}</span>
+            </Link>
+          )}
+
+          {/* Auth Button */}
+          {user ? (
+            <button
+              type="button"
+              onClick={handleLogout}
+              title="Sign Out"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-[#787567] dark:text-[#BDB8A4] hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsAuthOpen(true)}
+              className="flex items-center gap-1.5 h-8 px-3.5 rounded-full text-xs font-bold bg-[#FDE694] text-[#121212] hover:bg-[#fbdc70] transition-colors cursor-pointer shadow-2xs"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Sign In</span>
+            </button>
+          )}
+        </nav>
+
+        {/* Mobile Navbar Header */}
+        <div
+          className={cn(
+            "md:hidden w-full flex items-center justify-between px-4 py-2.5 rounded-full pointer-events-auto transition-all duration-300",
+            "bg-[#FAF3DD]/95 dark:bg-[#181714]/95 backdrop-blur-xl border border-[#EBE4CF] dark:border-[#2C2A22] shadow-md shadow-black/5"
+          )}
+        >
+          <Link href="/" className="flex items-center gap-2 group">
+            {logoUrl ? (
+              <img src={logoUrl} className="h-7 w-auto object-contain" alt="SKY" />
+            ) : (
+              <span className="font-black text-lg tracking-tight text-[#1C1B17] dark:text-[#F4EFE6] flex items-center gap-1.5">
+                SKY
+                <span className="w-2 h-2 rounded-full bg-[#FDE694]" />
+              </span>
+            )}
+          </Link>
+
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setIsSearchOpen(true)}
+              aria-label="Search"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-[#787567] dark:text-[#BDB8A4] hover:bg-[#EBE4CF]/60 dark:hover:bg-[#2B2A22]"
+            >
+              <AnimatedSearch size={18} />
+            </button>
 
             <button
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                setIsSearchOpen(true);
-              }}
-              className="w-full flex items-center justify-between p-3 rounded-2xl bg-muted/40 hover:bg-muted text-foreground text-sm font-medium transition-colors"
+              type="button"
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-[#787567] dark:text-[#BDB8A4] hover:bg-[#EBE4CF]/60 dark:hover:bg-[#2B2A22]"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                  <Search className="w-4 h-4" />
-                </div>
-                <span>Search Everything</span>
-              </div>
-              <kbd className="px-2 py-0.5 rounded bg-card text-[10px] font-mono text-muted-foreground border">⌘K</kbd>
+              <AnimatedSunMoon size={18} />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSupportClick}
+              aria-label="Support Hub"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-rose-500 hover:bg-rose-500/10"
+            >
+              <Heart className="w-4 h-4 fill-current" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle navigation menu"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-[#49473E] dark:text-[#F4EFE6] hover:bg-[#EBE4CF]/60 dark:hover:bg-[#2B2A22]"
+            >
+              <AnimatedMenuX size={20} isHovered={mobileMenuOpen} />
             </button>
           </div>
+        </div>
+      </header>
 
-          {/* Bottom Mobile Actions */}
-          <div className="pt-4 border-t border-border space-y-3">
-            <Button
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                setIsSupportOpen(true);
-              }}
-              className="w-full h-11 rounded-2xl bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white border border-rose-500/20 font-semibold text-xs transition-colors"
-            >
-              <Heart className="w-4 h-4 mr-2 fill-current" />
-              Support Developer Hub
-            </Button>
+      {/* Mobile Drawer Menu */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-x-0 top-16 z-40 p-4 md:hidden"
+          >
+            <div className="bg-[#FAF3DD] dark:bg-[#181714] border border-[#EBE4CF] dark:border-[#2C2A22] rounded-3xl p-5 shadow-2xl space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                {navLinks.map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <Link
+                      key={link.name}
+                      href={link.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2.5 p-3 rounded-2xl bg-[#FFF8E1] dark:bg-[#202024] border border-[#EBE4CF] dark:border-[#303035] text-xs font-bold text-[#49473E] dark:text-[#f3f3f6] hover:border-[#FDE694]"
+                    >
+                      <Icon size={16} />
+                      <span>{link.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
 
-            {user ? (
-              <div className="space-y-2">
-                {(isSuperAdmin || isAdminRole || isDeveloperRole) && (
-                  <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Button className="w-full h-11 rounded-2xl bg-primary text-primary-foreground font-semibold text-xs">
-                      <Shield className="w-4 h-4 mr-2" />
-                      Admin Command Console
-                    </Button>
+              <div className="pt-2 border-t border-[#EBE4CF] dark:border-[#2C2A22] flex flex-col gap-2">
+                {workspace && (
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#FDE694] text-[#121212] font-extrabold text-xs"
+                  >
+                    <workspace.icon className="w-4 h-4" />
+                    <span>{workspace.label} Dashboard</span>
                   </Link>
                 )}
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    handleLogout();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="w-full h-10 rounded-2xl border-border text-xs"
-                >
-                  <LogOut className="w-3.5 h-3.5 mr-2" />
-                  Sign Out ({user.email?.split('@')[0]})
-                </Button>
-              </div>
-            ) : (
-              <Button
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  setIsAuthOpen(true);
-                }}
-                className="w-full h-11 rounded-2xl bg-primary text-primary-foreground font-semibold text-xs"
-              >
-                <LogIn className="w-4 h-4 mr-2" />
-                Sign In to Account
-              </Button>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
 
-      {/* Modern Support Modal */}
-      <Dialog open={isSupportOpen} onOpenChange={setIsSupportOpen}>
-        <DialogContent className="max-w-md rounded-3xl border border-border glass bg-card/95 p-6 sm:p-8 shadow-2xl">
-          <DialogHeader className="text-center pb-2">
-            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center mx-auto mb-3">
-              <Heart className="w-6 h-6 fill-rose-500/20" />
+                {user ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleLogout();
+                    }}
+                    className="flex items-center justify-center gap-2 py-3 rounded-2xl bg-red-500/10 text-red-500 font-extrabold text-xs"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setIsAuthOpen(true);
+                    }}
+                    className="flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#FDE694] text-[#121212] font-extrabold text-xs"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>Sign In to Hub</span>
+                  </button>
+                )}
+
+                <div className="flex gap-2 pt-2">
+                  <a
+                    href={telegramChannel}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-blue-500/10 text-blue-500 text-[11px] font-bold"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Telegram</span>
+                  </a>
+                  <a
+                    href={telegramDiscussion}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-green-500/10 text-green-500 text-[11px] font-bold"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>Chat</span>
+                  </a>
+                </div>
+              </div>
             </div>
-            <DialogTitle className="text-xl font-bold tracking-tight">Support SkyHub Development</DialogTitle>
-            <p className="text-xs text-muted-foreground mt-1">
-              Your donations directly support continuous Snapdragon 4 Gen 2 build testing, server bandwidth, and kernel maintenance.
-            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Global Search Dialog Modal */}
+      <Dialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+        <DialogContent className="bg-[#FAF3DD] dark:bg-[#1A1914] border border-[#EBE4CF] dark:border-[#2C2A22] rounded-3xl p-6 max-w-lg shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black text-[#1C1B17] dark:text-[#F4EFE6] flex items-center gap-2">
+              <AnimatedSearch size={20} />
+              <span>Search SKY Ecosystem</span>
+            </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6 pt-4">
-            {/* QR Code Container */}
-            {qrUrl && (
-              <div className="p-4 rounded-2xl bg-white border border-border/80 shadow-inner flex flex-col items-center justify-center max-w-[220px] mx-auto">
-                <img src={qrUrl} alt="UPI QR Code" className="w-44 h-44 object-contain" />
-                <span className="text-[10px] font-bold text-slate-800 tracking-wider mt-2 uppercase">Scan with any UPI App</span>
-              </div>
-            )}
+          <div className="mt-4 space-y-4">
+            <div className="relative">
+              <input
+                type="text"
+                autoFocus
+                placeholder="Search ROMs, modules, recoveries, guides..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setIsSearchOpen(false);
+                    window.location.href = `/search?q=${encodeURIComponent(searchQuery)}`;
+                  }
+                }}
+                className="w-full h-12 pl-4 pr-12 rounded-2xl bg-[#FFF8E1] dark:bg-[#202024] border border-[#EBE4CF] dark:border-[#303035] text-sm text-[#49473E] dark:text-[#f3f3f6] placeholder-[#989484] focus:outline-none focus:border-[#FDE694]"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSearchOpen(false);
+                  window.location.href = `/search?q=${encodeURIComponent(searchQuery)}`;
+                }}
+                className="absolute right-2 top-2 h-8 px-3 rounded-xl bg-[#FDE694] text-[#121212] font-bold text-xs"
+              >
+                Go
+              </button>
+            </div>
 
-            {/* UPI ID Copy Card */}
-            {upiId && (
-              <div className="p-3.5 rounded-2xl bg-muted/50 border border-border/80 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block">UPI Address</span>
-                  <span className="text-xs font-mono font-bold text-foreground">{upiId}</span>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={copyUpiId}
-                  className="h-8 px-3 rounded-xl border-border bg-card text-xs font-semibold"
-                >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-500 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
-                  {copied ? 'Copied' : 'Copy'}
-                </Button>
-              </div>
-            )}
-
-            {/* Telegram Community Quick Links */}
-            <div className="grid grid-cols-2 gap-2 pt-2">
-              {telegramChannel && (
-                <a 
-                  href={telegramChannel} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-sky-500/10 hover:bg-sky-500 text-sky-500 hover:text-white border border-sky-500/20 text-xs font-semibold transition-colors"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Channel</span>
-                </a>
-              )}
-              {telegramDiscussion && (
-                <a 
-                  href={telegramDiscussion} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-muted/60 hover:bg-muted text-foreground border border-border/80 text-xs font-semibold transition-colors"
-                >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  <span>Discussion</span>
-                </a>
-              )}
+            <div className="flex flex-wrap gap-2 text-xs">
+              <span className="text-[#787567] dark:text-[#8E8A7A] self-center">Quick Links:</span>
+              <Link
+                href="/#roms"
+                onClick={() => setIsSearchOpen(false)}
+                className="px-2.5 py-1 rounded-full bg-[#EBE4CF] dark:bg-[#25241D] text-[#49473E] dark:text-[#BDB8A4] hover:bg-[#FDE694] hover:text-[#121212]"
+              >
+                ROMs
+              </Link>
+              <Link
+                href="/#device"
+                onClick={() => setIsSearchOpen(false)}
+                className="px-2.5 py-1 rounded-full bg-[#EBE4CF] dark:bg-[#25241D] text-[#49473E] dark:text-[#BDB8A4] hover:bg-[#FDE694] hover:text-[#121212]"
+              >
+                Device Specs
+              </Link>
+              <Link
+                href="/#team"
+                onClick={() => setIsSearchOpen(false)}
+                className="px-2.5 py-1 rounded-full bg-[#EBE4CF] dark:bg-[#25241D] text-[#49473E] dark:text-[#BDB8A4] hover:bg-[#FDE694] hover:text-[#121212]"
+              >
+                Team
+              </Link>
+              <Link
+                href="/guides"
+                onClick={() => setIsSearchOpen(false)}
+                className="px-2.5 py-1 rounded-full bg-[#EBE4CF] dark:bg-[#25241D] text-[#49473E] dark:text-[#BDB8A4] hover:bg-[#FDE694] hover:text-[#121212]"
+              >
+                Guides
+              </Link>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Command Search Overlay */}
-      <SearchOverlay isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      {/* Support / Donation Dialog */}
+      <Dialog open={isSupportOpen} onOpenChange={setIsSupportOpen}>
+        <DialogContent className="bg-[#FAF3DD] dark:bg-[#1A1914] border border-[#EBE4CF] dark:border-[#2C2A22] rounded-[2.5rem] p-8 max-w-sm flex flex-col items-center text-center gap-5 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black tracking-tight text-[#1C1B17] dark:text-[#F4EFE6] flex items-center justify-center gap-2">
+              <Heart className="w-5 h-5 text-rose-500 fill-current" />
+              <span>Support SKY Hub</span>
+            </DialogTitle>
+          </DialogHeader>
 
-      {/* Auth Modal */}
-      (<AuthModal isOpen={authModalOpen} setOpen={setAuthModalOpen} /> as any)
+          <div className="relative w-full aspect-square bg-white rounded-3xl p-4 border border-[#EBE4CF] overflow-hidden shadow-inner flex items-center justify-center">
+            {qrLink ? (
+              <img src={qrLink} alt="Payment QR" className="w-full h-full object-contain" />
+            ) : (
+              <span className="text-xs text-muted-foreground font-mono">No QR Configured</span>
+            )}
+          </div>
+
+          <div className="w-full space-y-3">
+            <div className="flex flex-col gap-1 text-left">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#787567] dark:text-[#BDB8A4]">
+                Direct UPI ID
+              </span>
+              <div className="bg-[#FFF8E1] dark:bg-[#202024] p-3 rounded-2xl flex items-center justify-between border border-[#EBE4CF] dark:border-[#303035]">
+                <span className="text-xs font-mono text-[#1C1B17] dark:text-[#F4EFE6] truncate">
+                  {upiId}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={copyUpiId}
+                  className="h-8 w-8 rounded-xl shrink-0 ml-2 hover:bg-[#FDE694]/30"
+                >
+                  {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
+
+            <p className="text-xs text-[#787567] dark:text-[#9C9888] leading-relaxed">
+              Donations directly fund Snapdragon 4 Gen 2 build servers, kernel testing, and high-bandwidth hosting.
+            </p>
+          </div>
+
+          <Button
+            onClick={() => setIsSupportOpen(false)}
+            className="w-full h-11 rounded-2xl bg-[#FDE694] hover:bg-[#fbdc70] text-[#121212] font-black text-xs uppercase tracking-wider shadow-none"
+          >
+            Close
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Auth Modal for Email/Password & Google Sign In */}
+      <AuthModal isOpen={isAuthOpen} onOpenChange={setIsAuthOpen} />
     </>
   );
 }

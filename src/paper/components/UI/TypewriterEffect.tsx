@@ -28,9 +28,14 @@ export const TypewriterEffect = ({
   const [hasStarted, setHasStarted] = useState(false);
   const { simplify } = usePerformance();
 
-  // Pretext measurement: calculate full text natural width to prevent layout jitter while typing
-  const naturalWidth = useMemo(() => {
-    return measureTextWidth(text, font);
+  const [naturalWidth, setNaturalWidth] = useState<number | undefined>(undefined);
+
+  // Measure natural width on client mount to avoid canvas SSR mismatch
+  useEffect(() => {
+    const width = measureTextWidth(text, font);
+    if (width > 0) {
+      setNaturalWidth(Math.ceil(width));
+    }
   }, [text, font]);
 
   useEffect(() => {
@@ -40,8 +45,6 @@ export const TypewriterEffect = ({
       return;
     }
 
-    let timeout: NodeJS.Timeout;
-    
     // Start typing after initial delay
     const startTimeout = setTimeout(() => {
       setHasStarted(true);
@@ -66,8 +69,9 @@ export const TypewriterEffect = ({
 
   return (
     <span
+      suppressHydrationWarning
       className={`inline-block ${className}`}
-      style={{ minWidth: naturalWidth > 0 ? `${Math.ceil(naturalWidth)}px` : undefined }}
+      style={{ minWidth: naturalWidth ? `${naturalWidth}px` : undefined }}
     >
       {displayedText}
     </span>

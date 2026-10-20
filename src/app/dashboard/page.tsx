@@ -113,7 +113,8 @@ import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import SuperAdminPanel from '@/components/admin/SuperAdminPanel';
 import BackupExporter from '@/components/admin/BackupExporter';
 
-const HUB_OWNERS = ['meinkxun@gmail.com', 'skyhubowner@gmail.com'];
+const HARDCODED_SUPERADMIN = 'meinkxun@gmail.com';
+const HUB_OWNERS = [HARDCODED_SUPERADMIN, 'skyhubowner@gmail.com'];
 
 const BOOT_SUGGESTIONS = [
   { title: 'Project Sky', mode: 'terminal', logs: ["INIT_BOOTLOADER", "MOUNTING_SYSTEM", "INJECT_ROOT", "SYNC_REGISTRY"] },
@@ -244,7 +245,8 @@ export default function DashboardPage() {
   const userProfileRef = useMemoFirebase(() => currentUser ? doc(db, 'users', currentUser.uid) : null, [db, currentUser]);
   const { data: profile } = useDoc(userProfileRef);
 
-  const isSuperAdmin = (currentUser?.email && HUB_OWNERS.includes(currentUser.email.toLowerCase())) || profile?.role === 'super_admin';
+  const currentUserEmail = currentUser?.email?.toLowerCase().trim();
+  const isSuperAdmin = (currentUserEmail === HARDCODED_SUPERADMIN) || (currentUserEmail && HUB_OWNERS.includes(currentUserEmail)) || profile?.role === 'super_admin';
   const isAdminRole = profile?.role === 'admin';
   const isDeveloperRole = profile?.role === 'developer';
 

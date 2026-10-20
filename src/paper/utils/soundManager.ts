@@ -79,9 +79,13 @@ export function toggleSound(): boolean {
  * React hook to read and control the global sound mute state
  */
 export function useSound() {
-  const [isMuted, setIsMuted] = useState<boolean>(isMutedMemory);
+  // Always initialize with true on initial render to prevent SSR hydration mismatch between server and client
+  const [isMuted, setIsMuted] = useState<boolean>(true);
 
   useEffect(() => {
+    // Sync with actual client preference immediately after mounting
+    setIsMuted(isSoundMuted());
+
     const handleSoundToggle = (e: Event) => {
       const customEvent = e as CustomEvent<{ isMuted: boolean }>;
       if (customEvent.detail && typeof customEvent.detail.isMuted === 'boolean') {

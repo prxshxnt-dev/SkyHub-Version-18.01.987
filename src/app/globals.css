@@ -2,147 +2,157 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-bg: #FFF8E1;
+  --color-surface-subtle: #F7F0D8;
+  --color-surface-card: #FAF3DD;
+  --color-surface-hover: #EBE4CF;
+  --color-border: #EBE4CF;
+  
+  --color-text-main: #49473E;
+  --color-text-muted: #787567;
+  --color-text-faint: #989484;
+  
+  --color-accent: #FDE694;
+  --color-accent-soft: rgba(253, 230, 148, 0.3);
+}
+
+.dark {
+  --color-bg: #141416;
+  --color-surface-subtle: #1a1a1e;
+  --color-surface-card: #202024;
+  --color-surface-hover: #2b2b30;
+  --color-border: #303035;
+  
+  --color-text-main: #f3f3f6;
+  --color-text-muted: #9ca0ab;
+  --color-text-faint: #6c6f7b;
+  
+  --color-accent: #ffffff;
+  --color-accent-soft: rgba(255, 255, 255, 0.12);
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
   }
+  
   :root {
-    --background: 38 28% 97%;
-    --foreground: 25 35% 12%;
+    /* Warm light mode (#FFF8E1 background, #FAF3DD card, #49473E text, #FDE694 accent) */
+    --background: 46 100% 94%;
+    --foreground: 48 9% 27%;
 
-    --card: 36 30% 99%;
-    --card-foreground: 25 35% 12%;
+    --card: 45 67% 93%;
+    --card-foreground: 48 9% 27%;
 
-    --popover: 36 30% 99%;
-    --popover-foreground: 25 35% 12%;
+    --popover: 45 67% 93%;
+    --popover-foreground: 48 9% 27%;
 
-    --primary: 24 68% 44%;
-    --primary-foreground: 38 28% 98%;
+    --primary: 47 96% 79%;
+    --primary-foreground: 0 0% 7%;
 
-    --secondary: 36 22% 92%;
-    --secondary-foreground: 25 35% 16%;
+    --secondary: 46 54% 87%;
+    --secondary-foreground: 48 9% 27%;
 
-    --muted: 36 20% 93%;
-    --muted-foreground: 25 14% 46%;
+    --muted: 46 54% 87%;
+    --muted-foreground: 48 8% 44%;
 
-    --accent: 32 75% 48%;
-    --accent-foreground: 38 28% 98%;
+    --accent: 47 96% 79%;
+    --accent-foreground: 0 0% 7%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 36 20% 87%;
-    --input: 36 20% 87%;
-    --ring: 24 68% 44%;
+    --border: 46 54% 87%;
+    --input: 46 54% 87%;
+    --ring: 47 96% 79%;
 
-    --radius: 1.25rem;
+    --radius: 1.5rem;
 
-    --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
-    --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-    --font-mono: var(--font-mono), ui-monospace, monospace;
+    --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    --font-body: 'Plus Jakarta Sans', 'Inter', sans-serif;
 
-    --sidebar-background: 36 30% 99%;
-    --sidebar-foreground: 25 35% 12%;
-    --sidebar-primary: 24 68% 44%;
-    --sidebar-primary-foreground: 38 28% 98%;
-    --sidebar-accent: 36 22% 92%;
-    --sidebar-accent-foreground: 25 35% 16%;
-    --sidebar-border: 36 20% 87%;
-    --sidebar-ring: 24 68% 44%;
+    --sidebar-background: 46 100% 94%;
+    --sidebar-foreground: 48 9% 27%;
+    --sidebar-primary: 47 96% 79%;
+    --sidebar-primary-foreground: 0 0% 7%;
+    --sidebar-accent: 46 54% 87%;
+    --sidebar-accent-foreground: 48 9% 27%;
+    --sidebar-border: 46 54% 87%;
+    --sidebar-ring: 47 96% 79%;
   }
 
-  /* Dark mode - Rich Warm Espresso / Mocha */
+  /* Dark mode (#141416 background, #202024 card, #f3f3f6 text, #303035 border) */
   .dark {
-    --background: 24 22% 7%;
-    --foreground: 38 28% 95%;
+    --background: 240 6% 8%;
+    --foreground: 240 7% 96%;
 
-    --card: 24 18% 11%;
-    --card-foreground: 38 28% 95%;
+    --card: 240 6% 13%;
+    --card-foreground: 240 7% 96%;
 
-    --popover: 24 18% 11%;
-    --popover-foreground: 38 28% 95%;
+    --popover: 240 6% 13%;
+    --popover-foreground: 240 7% 96%;
 
-    --primary: 26 78% 56%;
-    --primary-foreground: 24 25% 8%;
+    --primary: 47 96% 79%;
+    --primary-foreground: 0 0% 7%;
 
-    --secondary: 24 16% 15%;
-    --secondary-foreground: 38 25% 90%;
+    --secondary: 240 6% 18%;
+    --secondary-foreground: 240 7% 96%;
 
-    --muted: 24 14% 16%;
-    --muted-foreground: 30 14% 64%;
+    --muted: 240 6% 18%;
+    --muted-foreground: 226 7% 64%;
 
-    --accent: 34 82% 58%;
-    --accent-foreground: 24 25% 8%;
+    --accent: 47 96% 79%;
+    --accent-foreground: 0 0% 7%;
 
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 38 28% 95%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 24 16% 19%;
-    --input: 24 16% 19%;
-    --ring: 26 78% 56%;
+    --border: 240 5% 20%;
+    --input: 240 5% 20%;
+    --ring: 47 96% 79%;
 
-    --sidebar-background: 24 22% 7%;
-    --sidebar-foreground: 38 28% 95%;
-    --sidebar-primary: 26 78% 56%;
-    --sidebar-primary-foreground: 24 25% 8%;
-    --sidebar-accent: 24 16% 15%;
-    --sidebar-accent-foreground: 38 28% 95%;
-    --sidebar-border: 24 16% 19%;
-    --sidebar-ring: 26 78% 56%;
+    --sidebar-background: 240 6% 8%;
+    --sidebar-foreground: 240 7% 96%;
+    --sidebar-primary: 47 96% 79%;
+    --sidebar-primary-foreground: 0 0% 7%;
+    --sidebar-accent: 240 6% 18%;
+    --sidebar-accent-foreground: 240 7% 96%;
+    --sidebar-border: 240 5% 20%;
+    --sidebar-ring: 47 96% 79%;
   }
 }
 
 @layer base {
   * {
     @apply border-border;
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
   }
-  body {
-    @apply bg-background text-foreground antialiased selection:bg-primary/25 selection:text-primary;
-    font-family: var(--font-body);
+  
+  html, body {
+    background-color: var(--color-bg);
+    color: var(--color-text-main);
+    letter-spacing: -0.011em;
+    min-height: 100vh;
+    overflow-x: hidden;
   }
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
-    letter-spacing: -0.03em;
-  }
-  code, pre, kbd {
-    font-family: var(--font-mono);
+  
+  .dark body {
+    background-color: #141416;
+    color: #f3f3f6;
   }
 }
 
-/* Refined Glass & Glow Utilities in Warm Palette */
 .glass {
-  background: hsl(var(--card) / 0.75);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid hsl(var(--border) / 0.85);
+  background: var(--color-surface-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--color-border);
 }
 
 .glass-pill {
-  background: hsl(var(--background) / 0.8);
+  background: var(--color-surface-card);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid hsl(var(--border) / 0.75);
-}
-
-.glow-warm {
-  box-shadow: 0 0 40px -10px hsl(var(--primary) / 0.25);
-}
-
-.glow-amber {
-  box-shadow: 0 0 40px -10px hsl(var(--accent) / 0.25);
-}
-
-/* Subtle background grid & dot pattern */
-.bg-grid-pattern {
-  background-size: 32px 32px;
-  background-image: 
-    linear-gradient(to right, hsl(var(--foreground) / 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, hsl(var(--foreground) / 0.04) 1px, transparent 1px);
-}
-
-.bg-dot-pattern {
-  background-size: 24px 24px;
-  background-image: radial-gradient(hsl(var(--foreground) / 0.08) 1px, transparent 1px);
+  border: 1px solid var(--color-border);
 }
 
 @layer utilities {
@@ -155,114 +165,30 @@
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
-    height: 6px;
   }
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted-foreground) / 0.25);
-    border-radius: 9999px;
-  }
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.45);
+    background: var(--color-border);
+    border-radius: 20px;
   }
 }
 
-@keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+@keyframes pixel-slow-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-.animate-marquee {
-  animation: marquee 35s linear infinite;
+@keyframes pixel-slow-rotate-reverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
 }
 
-.pause-marquee:hover {
-  animation-play-state: paused;
+.animate-pixel-rotate {
+  animation: pixel-slow-rotate 60s linear infinite;
 }
 
-/* ═══════════════════════════════════════════════
-   TACTILE 3D KRAFT PAPER PORTFOLIO THEME TOKENS
-   ═══════════════════════════════════════════════ */
-
-@font-face {
-  font-family: 'Kalam';
-  src: url('/fonts/Kalam-Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Kalam';
-  src: url('/fonts/Kalam-Bold.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-.font-handwriting {
-  font-family: 'Kalam', cursive, ui-sans-serif, sans-serif;
-}
-
-:root {
-  --c-bg: #EFE6D5;
-  --c-heading: #241F1A;
-  --c-body: #443E35;
-  --c-muted: #686053;
-  --c-subtle: #544C40;
-  --c-faint: #7D7569;
-  --c-name: #2A2520;
-  --c-border: rgba(36, 31, 26, 0.14);
-  --c-border-hover: rgba(36, 31, 26, 0.35);
-  --c-border-focus: #241F1A;
-  --c-btn-bg: #241F1A;
-  --c-btn-bg-hover: #3A3328;
-  --c-btn-text: #F4EDE0;
-  --c-card: rgba(255, 255, 255, 0.28);
-  --c-card-gradient-from: rgba(255,255,255,0.4);
-  --c-card-gradient-to: rgba(255,255,255,0.08);
-  --c-header-bg: #EFE6D5;
-  --c-header-border: rgba(36,31,26,0.1);
-  --c-input-bg: rgba(255, 255, 255, 0.5);
-  --c-modal-bg: rgba(239, 230, 213, 0.98);
-  --c-modal-backdrop: rgba(36, 31, 26, 0.7);
-  --c-dot: #8B4513;
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-}
-
-#physical-paper-sheet {
-  background-color: var(--c-bg, #EFE6D5);
-  box-shadow: 
-    0 1px 3px rgba(36, 31, 26, 0.05),
-    0 10px 30px -5px rgba(36, 31, 26, 0.12),
-    0 20px 45px -10px rgba(36, 31, 26, 0.15);
-  border-radius: 12px;
-  border: 1px solid var(--c-border);
-  position: relative;
-}
-
-.paper-grain::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.06;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  background-size: 256px 256px;
-  mix-blend-mode: multiply;
-  border-radius: inherit;
-}
-
-@keyframes contentFadeIn {
-  0% { opacity: 0; transform: scale(0.99); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-.animate-content-fade {
-  animation: contentFadeIn 0.22s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-  will-change: opacity, transform;
+.animate-pixel-rotate-reverse {
+  animation: pixel-slow-rotate-reverse 60s linear infinite;
 }

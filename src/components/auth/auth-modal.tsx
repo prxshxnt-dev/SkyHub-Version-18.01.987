@@ -66,6 +66,15 @@ export function AuthModal({ isOpen, onOpenChange }: AuthModalProps) {
 
     // Always merge so role and super_admin privileges are active immediately
     await setDoc(userRef, syncData, { merge: true });
+
+    // Set cookie for Next.js authentication middleware inspection
+    if (typeof document !== 'undefined' && firebaseUser.email) {
+      const normalizedEmail = firebaseUser.email.toLowerCase().trim();
+      document.cookie = `skyhub_auth_email=${encodeURIComponent(normalizedEmail)}; path=/; max-age=2592000; SameSite=Lax`;
+      if (isOwner) {
+        document.cookie = `skyhub_admin_session=active; path=/; max-age=2592000; SameSite=Lax`;
+      }
+    }
   };
 
   const handleGoogleLogin = async () => {

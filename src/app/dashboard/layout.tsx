@@ -7,7 +7,8 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 
-const HUB_OWNERS = ['meinkxun@gmail.com', 'skyhubowner@gmail.com'];
+const HARDCODED_SUPERADMIN_EMAIL = 'meinkxun@gmail.com';
+const HUB_OWNERS = [HARDCODED_SUPERADMIN_EMAIL, 'skyhubowner@gmail.com'];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -24,11 +25,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!isUserLoading && !isProfileLoading) {
       if (!user) {
         router.push('/');
-        toast({ title: "Access Denied", description: "Please login first." });
+        toast({ title: "Access Denied", description: "Authentication required to access the admin terminal." });
         return;
       }
 
-      const isSuperAdmin = (user.email && HUB_OWNERS.includes(user.email.toLowerCase())) || profile?.role === 'super_admin';
+      const userEmail = user.email?.toLowerCase().trim();
+      const isSuperAdmin = (userEmail === HARDCODED_SUPERADMIN_EMAIL) || (userEmail && HUB_OWNERS.includes(userEmail)) || profile?.role === 'super_admin';
       const isAdminRole = profile?.role === 'admin';
       const isDeveloperRole = profile?.role === 'developer';
 
@@ -40,8 +42,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.push('/');
       toast({ 
         variant: "destructive", 
-        title: "Restricted Area", 
-        description: "Authorized clearance required for this terminal." 
+        title: "Access Restricted", 
+        description: "Administrative clearance is restricted to authorized personnel (meinkxun@gmail.com)." 
       });
     }
   }, [user, isUserLoading, profile, isProfileLoading, router]);
@@ -57,7 +59,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  const isSuperAdmin = (user?.email && HUB_OWNERS.includes(user.email.toLowerCase())) || profile?.role === 'super_admin';
+  const userEmail = user?.email?.toLowerCase().trim();
+  const isSuperAdmin = (userEmail === HARDCODED_SUPERADMIN_EMAIL) || (userEmail && HUB_OWNERS.includes(userEmail)) || profile?.role === 'super_admin';
   const isAdminRole = profile?.role === 'admin';
   const isDeveloperRole = profile?.role === 'developer';
 

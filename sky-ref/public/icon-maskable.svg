@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE694" />
+      <stop offset="50%" stop-color="#F4D068" />
+      <stop offset="100%" stop-color="#E5A832" />
+    </linearGradient>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1C1B17" />
+      <stop offset="100%" stop-color="#0D0D0B" />
+    </linearGradient>
+  </defs>
+
+  <!-- Full-bleed background for Android Adaptive & Maskable Icon safe-zone specifications -->
+  <rect width="512" height="512" fill="url(#bgGrad)" />
+
+  <!-- Centered Artwork within safe-zone circle (center at 256,256, radius 190) -->
+  <g transform="translate(0, 0)">
+    <!-- Subtle Phone Outer Frame -->
+    <rect x="146" y="90" width="220" height="332" rx="32" fill="none" stroke="url(#skyGrad)" stroke-width="7" stroke-opacity="0.45" />
+
+    <!-- Phone Inner Screen Outline -->
+    <rect x="160" y="112" width="192" height="288" rx="20" fill="#121210" stroke="#36342A" stroke-width="3.5" />
+
+    <!-- Camera Punchhole -->
+    <circle cx="256" cy="132" r="7" fill="#FDE694" opacity="0.9" />
+
+    <!-- Stylized "S" / "SKY" Wave Lines inside Screen -->
+    <path d="M 186 226 C 222 180, 286 270, 326 218" fill="none" stroke="url(#skyGrad)" stroke-width="12" stroke-linecap="round" />
+    <path d="M 186 272 C 222 226, 286 316, 326 264" fill="none" stroke="url(#skyGrad)" stroke-width="12" stroke-linecap="round" opacity="0.75" />
+    <path d="M 186 318 C 222 272, 286 362, 326 310" fill="none" stroke="url(#skyGrad)" stroke-width="12" stroke-linecap="round" opacity="0.45" />
+
+    <!-- Small Glowing Accent Dots -->
+    <circle cx="314" cy="170" r="9" fill="#FDE694" />
+    <circle cx="196" cy="336" r="5.5" fill="#FDE694" opacity="0.7" />
+  </g>
+</svg>

@@ -274,7 +274,7 @@ export async function runSkyHubExport(
 
         // Process Screenshots
         const screenshotUrls: string[] = Array.isArray(rom.screenshots) ? rom.screenshots : [];
-        if (mode !== 'metadata' && screenshotUrls.length > 0) {
+        if (screenshotUrls.length > 0) {
           const screenshotsFolder = romSubFolder?.folder('screenshots');
           for (let sIdx = 0; sIdx < screenshotUrls.length; sIdx++) {
             const shotUrl = screenshotUrls[sIdx];
@@ -316,7 +316,7 @@ export async function runSkyHubExport(
         }
 
         // Process Banner / Thumbnail
-        if (mode !== 'metadata' && rom.imageUrl) {
+        if (rom.imageUrl) {
           const bannerResult = await fetchAssetBuffer(rom.imageUrl);
           processedCount++;
           if (bannerResult) {

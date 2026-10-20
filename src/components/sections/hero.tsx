@@ -1,40 +1,38 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { 
-  Smartphone, 
-  Settings, 
-  Cpu, 
   Zap, 
-  Shield, 
-  Users, 
+  Sparkles, 
   Heart, 
-  QrCode, 
   Copy, 
   Check, 
   Send, 
-  MessageSquare, 
-  Sparkles, 
-  ArrowDown,
-  Layers,
-  Search,
-  ExternalLink,
-  ChevronRight
+  MessageSquare,
+  ArrowRight
 } from 'lucide-react';
+import { 
+  AnimatedArrowRight, 
+  AnimatedGithub, 
+  AnimatedSmartphone, 
+  AnimatedUsers, 
+  AnimatedLayers, 
+  AnimatedMessageCircle 
+} from '@/components/icons';
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle 
 } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { DEFAULT_DONATION_CONFIG, SiteSettings } from '@/lib/store';
 import { toast } from '@/hooks/use-toast';
-import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
-import { SearchOverlay } from '@/components/ui/SearchOverlay';
+import { motion } from 'motion/react';
+import { TextLoop, ScrollReveal, SpecCountersSection } from '@/components/sky';
 
 export function Hero() {
   const db = useFirestore();
@@ -45,7 +43,6 @@ export function Hero() {
   const { data: globalSettings } = useDoc<SiteSettings>(globalSettingsRef);
 
   const [isSupportOpen, setIsSupportOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const upiId = settings?.upiId || DEFAULT_DONATION_CONFIG.upiId;
@@ -53,18 +50,13 @@ export function Hero() {
   const qrUrl = settings?.qrImageUrl || DEFAULT_DONATION_CONFIG.qrImageUrl;
   const telegramChannel = globalSettings?.socialLinks?.telegramChannel || DEFAULT_DONATION_CONFIG.telegramChannelUrl;
   const telegramDiscussion = globalSettings?.socialLinks?.discussion || DEFAULT_DONATION_CONFIG.telegramDiscussionUrl;
+  const telegramLogo = settings?.telegramLogoUrl || DEFAULT_DONATION_CONFIG.telegramLogoUrl;
+  const qrLink = globalSettings?.supportLinks?.qrLink || qrUrl;
 
-  const rawHeroTitle = globalSettings?.heroTitle || 'REDMI 12 5G\nPOCO M6 PRO 5G';
-  const heroTitle = rawHeroTitle.includes("hemlo User's") 
-    ? 'REDMI 12 5G\nPOCO M6 PRO 5G' 
-    : rawHeroTitle;
+  const rawHeroTitle = globalSettings?.heroTitle || 'SKY';
+  const displayTitle = rawHeroTitle.includes("hemlo User's") || rawHeroTitle.includes("REDMI 12") ? 'SKY' : rawHeroTitle;
 
-  const rawHeroSubtitle = globalSettings?.heroSubtitle || 'The definitive command center for sky-platform development.\nUnleash Snapdragon 4 Gen 2 with premium custom kernels and system builds.';
-  const heroSubtitle = rawHeroTitle.includes("hemlo User's")
-    ? 'The definitive command center for sky-platform development.\nUnleash Snapdragon 4 Gen 2 with premium custom kernels and system builds.'
-    : rawHeroSubtitle;
-
-  const titleLines = heroTitle.split('\n');
+  const rawHeroSubtitle = globalSettings?.heroSubtitle;
 
   const scrollTo = (id: string) => {
     const element = document.getElementById(id);
@@ -73,213 +65,317 @@ export function Hero() {
     }
   };
 
+  const handleSupportClick = () => {
+    if (!upiId) {
+      toast({ title: "Configuration Error", description: "UPI ID has not been set by the admin." });
+      return;
+    }
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.location.href = `upi://pay?pa=${upiId}${upiAmount ? `&am=${upiAmount}` : ''}&cu=INR`;
+    } else {
+      setIsSupportOpen(true);
+    }
+  };
+
   const copyUpiId = () => {
     navigator.clipboard.writeText(upiId);
     setCopied(true);
-    toast({ title: "UPI ID Copied", description: "UPI ID copied to clipboard." });
+    toast({ title: "Registry Copied", description: "UPI ID added to clipboard." });
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const highlightWords = (text: string) => {
-    if (!(globalSettings as any)?.highlightedWords || globalSettings.highlightedWords.length === 0) return text;
-    let parts: (string | React.ReactNode)[] = [text];
-    
-    globalSettings.highlightedWords.forEach((hw: any) => {
-      if (!hw.word) return;
-      const escapedWord = hw.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`(${escapedWord})`, 'gi');
-      
-      parts = parts.flatMap((p: any, pIdx: number) => {
-        if (typeof p === 'string') {
-          const split = p.split(regex);
-          return split.map((s, i) => i % 2 !== 0 ? <span key={`${hw.word}-${pIdx}-${i}`} style={{ color: hw.color }}>{s}</span> : s);
-        }
-        return p;
-      });
-    });
-    
-    return parts;
-  };
-
   return (
-    <section className="relative pt-36 sm:pt-44 pb-20 md:pb-28 overflow-hidden flex flex-col items-center justify-center text-center px-4 sm:px-6 min-h-[85vh]">
-      {/* Background ambient lighting effects */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full -z-10 pointer-events-none overflow-hidden">
-        {/* Soft Radial Ambient Glows */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[900px] h-[500px] bg-primary/10 blur-[150px] rounded-full" />
-        <div className="absolute top-1/3 left-1/3 w-[400px] h-[400px] bg-accent/10 blur-[140px] rounded-full" />
-        {/* Fine Dot Grid */}
-        <div className="absolute inset-0 bg-dot-pattern opacity-40 [mask-image:radial-gradient(ellipse_60%_50%_at_50%_40%,#000_70%,transparent_100%)]" />
-      </div>
+    <section className="relative pt-24 sm:pt-32 pb-16 overflow-hidden flex flex-col items-center justify-center text-center px-4 sm:px-6">
+      {/* Brand Hero Container */}
+      <div className="max-w-5xl mx-auto z-10 w-full flex flex-col items-center">
+        {/* Top Protocol Badge */}
+        <ScrollReveal delayMs={0} distance={15}>
+          <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-[#EBE4CF] dark:border-[#36342A] bg-[#FAF3DD]/80 dark:bg-[#1F1E18]/80 text-[#787567] dark:text-[#BDB8A4] text-xs font-bold tracking-wider mb-8 uppercase backdrop-blur-md">
+            <span className="w-2 h-2 rounded-full bg-[#FDE694] animate-pulse" />
+            <span>POCO M6 PRO 5G & REDMI 12 5G ECOSYSTEM</span>
+          </div>
+        </ScrollReveal>
 
-      <div className="max-w-5xl mx-auto z-10 w-full">
-        {/* Top Protocol Status Pill */}
-        <motion.div 
-          initial={{ opacity: 0, y: -15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-primary/25 bg-card/80 text-foreground text-xs font-semibold tracking-wider uppercase mb-8 backdrop-blur-xl shadow-sm"
-        >
-          <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          <span className="text-primary font-bold">SkyHub</span>
-          <span className="text-muted-foreground">•</span>
-          <span className="text-muted-foreground font-mono text-[11px]">Snapdragon 4 Gen 2 Matrix</span>
-        </motion.div>
-        
-        {/* Hero Title */}
-        <motion.h1 
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight mb-6 flex flex-col leading-[1.02] uppercase text-foreground"
-        >
-          {titleLines.map((line: string, index: number) => (
-            <span key={index} className={index === 0 ? "drop-shadow-sm" : "text-muted-foreground/70 font-bold"}>
-              {highlightWords(line)}
-            </span>
-          ))}
-        </motion.h1>
-        
-        {/* Hero Subtitle */}
-        <motion.p 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.15 }}
-          className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl mx-auto mb-10 font-normal leading-relaxed whitespace-pre-line"
-        >
-          {highlightWords(heroSubtitle)}
-        </motion.p>
+        {/* Brand Name Headline */}
+        <ScrollReveal delayMs={100} distance={20}>
+          <h1 className="text-7xl xs:text-8xl sm:text-9xl md:text-[140px] font-black tracking-tighter text-[#1C1B17] dark:text-[#F4EFE6] leading-none mb-3 selection:bg-[#FDE694] transition-colors duration-300">
+            {displayTitle}
+          </h1>
+        </ScrollReveal>
 
-        {/* Primary Action Buttons */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.25 }}
-          className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mb-12"
-        >
-          <Button
-            size="lg"
-            onClick={() => scrollTo('roms')}
-            className="h-12 px-7 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <Cpu className="w-4 h-4 mr-2" />
-            <span>Explore ROMs</span>
-          </Button>
+        {/* Primary Tagline */}
+        <ScrollReveal delayMs={180} distance={16}>
+          <p className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-[#49473E] dark:text-[#E6E0D5] mb-4 transition-colors duration-300">
+            Xiaomi Redmi 12 5G & POCO M6 Pro 5G Hub
+          </p>
+        </ScrollReveal>
 
-          <Button
-            size="lg"
-            variant="outline"
-            onClick={() => scrollTo('devices')}
-            className="h-12 px-7 rounded-2xl border-border/80 bg-card/70 hover:bg-muted text-foreground font-semibold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <Smartphone className="w-4 h-4 mr-2 text-primary" />
-            <span>Device Matrix</span>
-          </Button>
+        {/* Subtitle with dynamic animated TextLoop */}
+        <ScrollReveal delayMs={240} distance={14}>
+          <div className="text-sm sm:text-base text-[#787567] dark:text-[#BDB8A4] max-w-xl mx-auto leading-relaxed mb-8 font-normal transition-colors duration-300">
+            {rawHeroSubtitle && !rawHeroSubtitle.includes("hemlo User's") ? (
+              <p className="whitespace-pre-line">{rawHeroSubtitle}</p>
+            ) : (
+              <p>
+                A community-driven custom ROM & kernel hub built to be{' '}
+                <TextLoop
+                  words={['faster.', 'cleaner.', 'more open.', 'customizable.', 'yours.']}
+                  className="text-[#1C1B17] dark:text-[#FDE694] font-bold"
+                />
+              </p>
+            )}
+          </div>
+        </ScrollReveal>
 
-          <Button
-            size="lg"
-            variant="ghost"
-            onClick={() => setIsSearchOpen(true)}
-            className="h-12 px-5 rounded-2xl text-muted-foreground hover:text-foreground hover:bg-muted text-sm font-medium"
-          >
-            <Search className="w-4 h-4 mr-2 text-muted-foreground" />
-            <span>Command Search (⌘K)</span>
-          </Button>
-        </motion.div>
+        {/* Hero Action Buttons */}
+        <ScrollReveal delayMs={300} distance={12}>
+          <div className="flex flex-wrap items-center justify-center gap-3.5 mb-12">
+            <button
+              type="button"
+              onClick={() => scrollTo('roms')}
+              className="min-h-[46px] px-8 py-3 rounded-full text-xs font-black uppercase tracking-wider bg-[#FDE694] text-[#121212] hover:bg-[#fbdc70] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 border border-[#EBE4CF] dark:border-transparent shadow-sm group"
+            >
+              <span>Explore SKY</span>
+              <AnimatedArrowRight size={16} className="text-[#121212] group-hover:translate-x-1 transition-transform" />
+            </button>
 
-        {/* Community & Discussion Translucent Pills */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="w-full max-w-xl mx-auto mb-16 p-2 rounded-2xl sm:rounded-full glass border border-border/80 flex flex-col sm:flex-row items-center justify-between gap-2 shadow-lg"
-        >
-          {telegramChannel && (
-            <a 
-              href={telegramChannel}
+            <a
+              href="https://github.com/sm4450-development"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-full bg-sky-500/10 hover:bg-sky-500 text-sky-500 hover:text-white border border-sky-500/20 text-xs font-bold transition-all"
+              className="min-h-[46px] px-7 py-3 rounded-full text-xs font-bold text-[#49473E] dark:text-[#F4EFE6] bg-[#FAF3DD] dark:bg-[#202024] border border-[#EBE4CF] dark:border-[#303035] hover:bg-[#EBE4CF] dark:hover:bg-[#2B2B30] transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-2xs group"
             >
-              <Send className="w-3.5 h-3.5" />
-              <span>Official Telegram Channel</span>
-              <ExternalLink className="w-3 h-3 opacity-70" />
+              <AnimatedGithub size={16} className="text-[#49473E] dark:text-[#FDE694]" />
+              <span>GitHub</span>
             </a>
-          )}
 
-          {telegramDiscussion && (
-            <a 
-              href={telegramDiscussion}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-full hover:bg-muted text-foreground border border-border/60 text-xs font-bold transition-all"
+            <button
+              type="button"
+              onClick={handleSupportClick}
+              className="min-h-[46px] px-6 py-3 rounded-full text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 transition-colors cursor-pointer flex items-center justify-center gap-2"
             >
-              <MessageSquare className="w-3.5 h-3.5 text-primary" />
-              <span>Discussion Group</span>
-              <ExternalLink className="w-3 h-3 opacity-70" />
-            </a>
-          )}
-        </motion.div>
-
-        {/* Technical Highlights Bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto text-left"
-        >
-          <div className="p-4 rounded-2xl bg-card/50 border border-border/70 backdrop-blur-md">
-            <div className="flex items-center gap-2 text-primary font-bold text-xs mb-1 uppercase tracking-wider">
-              <Cpu className="w-3.5 h-3.5" />
-              <span>Architecture</span>
-            </div>
-            <p className="text-sm font-bold text-foreground">Snapdragon 4 Gen 2</p>
-            <p className="text-xs text-muted-foreground mt-0.5">SM4450 4nm Platform</p>
+              <Heart className="w-4 h-4 fill-current" />
+              <span>Support</span>
+            </button>
           </div>
+        </ScrollReveal>
 
-          <div className="p-4 rounded-2xl bg-card/50 border border-border/70 backdrop-blur-md">
-            <div className="flex items-center gap-2 text-emerald-500 font-bold text-xs mb-1 uppercase tracking-wider">
-              <Zap className="w-3.5 h-3.5" />
-              <span>Kernels</span>
-            </div>
-            <p className="text-sm font-bold text-foreground">KSU & Performance</p>
-            <p className="text-xs text-muted-foreground mt-0.5">KernelSU + Boot Patches</p>
-          </div>
+        {/* Telegram Channels with Lightning Shimmer */}
+        <ScrollReveal delayMs={360} distance={12} className="w-full">
+          <div className="w-full max-w-2xl mx-auto mb-16 p-2 rounded-full bg-[#FAF3DD]/80 dark:bg-[#1A1914]/80 border border-[#EBE4CF] dark:border-[#2C2A22] backdrop-blur-md flex flex-col sm:flex-row items-center gap-2.5 shadow-sm">
+            <button
+              type="button"
+              onClick={() => window.open(telegramChannel, '_blank')}
+              className="group relative h-12 flex-1 rounded-full bg-[#FFF8E1] dark:bg-[#202024] border border-[#EBE4CF] dark:border-[#303035] flex items-center justify-center gap-2.5 px-6 text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-wider transition-all hover:border-blue-500/50 overflow-hidden w-full"
+            >
+              <motion.div
+                animate={{ x: ['-150%', '150%'] }}
+                transition={{ repeat: Infinity, duration: 2.5, ease: "linear", repeatDelay: 0.5 }}
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/30 to-transparent skew-x-[35deg] pointer-events-none"
+              />
+              <div className="relative z-10 flex items-center gap-2">
+                {telegramLogo ? (
+                  <img src={telegramLogo} className="w-4 h-4 object-contain rounded-full" alt="TG" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                <span>Official Channel</span>
+              </div>
+              <Zap className="absolute right-4 w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />
+            </button>
 
-          <div className="p-4 rounded-2xl bg-card/50 border border-border/70 backdrop-blur-md">
-            <div className="flex items-center gap-2 text-accent font-bold text-xs mb-1 uppercase tracking-wider">
-              <Layers className="w-3.5 h-3.5" />
-              <span>Build Types</span>
-            </div>
-            <p className="text-sm font-bold text-foreground">AOSP 14 / 15 / 16</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Official & Community</p>
+            <button
+              type="button"
+              onClick={() => window.open(telegramDiscussion, '_blank')}
+              className="group relative h-12 flex-1 rounded-full bg-[#FFF8E1] dark:bg-[#202024] border border-[#EBE4CF] dark:border-[#303035] flex items-center justify-center gap-2.5 px-6 text-green-600 dark:text-green-400 font-bold text-xs uppercase tracking-wider transition-all hover:border-green-500/50 overflow-hidden w-full"
+            >
+              <motion.div
+                animate={{ x: ['-150%', '150%'] }}
+                transition={{ repeat: Infinity, duration: 2.5, ease: "linear", repeatDelay: 1 }}
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-green-500/30 to-transparent skew-x-[35deg] pointer-events-none"
+              />
+              <div className="relative z-10 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                <span>Discussion Node</span>
+              </div>
+              <Sparkles className="absolute right-4 w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-green-500" />
+            </button>
           </div>
+        </ScrollReveal>
 
-          <div className="p-4 rounded-2xl bg-card/50 border border-border/70 backdrop-blur-md">
-            <div className="flex items-center gap-2 text-rose-500 font-bold text-xs mb-1 uppercase tracking-wider">
-              <Shield className="w-3.5 h-3.5" />
-              <span>Integrity</span>
+        {/* Spec Counters Section: 5000mAh, 90Hz, 4nm, 50MP */}
+        <div className="w-full max-w-5xl mx-auto mb-16 text-left">
+          <SpecCountersSection />
+        </div>
+
+        {/* 4 Gateway Overview Cards */}
+        <div className="w-full max-w-5xl mx-auto space-y-6">
+          <ScrollReveal distance={14}>
+            <div className="text-center max-w-xl mx-auto mb-6">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#121212] bg-[#FDE694] px-3 py-1 rounded-full inline-block mb-2 shadow-2xs">
+                Ecosystem Overview
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#1C1B17] dark:text-[#F4EFE6]">
+                Designed with purpose.
+              </h2>
             </div>
-            <p className="text-sm font-bold text-foreground">100% Free & Open</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Zero Ads or Paywalls</p>
+          </ScrollReveal>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
+            {/* Card 1: The Device */}
+            <ScrollReveal delayMs={50} distance={16} className="h-full">
+              <div
+                onClick={() => scrollTo('device')}
+                className="group bg-[#FAF3DD] dark:bg-[#1F1E18] p-6 rounded-3xl border border-[#EBE4CF] dark:border-[#36342A] hover:border-[#FDE694] dark:hover:border-[#FDE694]/60 hover:shadow-lg transition-all duration-300 flex flex-col justify-between h-full cursor-pointer"
+              >
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-[#FDE694] text-[#121212] flex items-center justify-center mb-5 group-hover:scale-105 transition-transform shadow-2xs">
+                    <AnimatedSmartphone size={24} />
+                  </div>
+                  <h3 className="text-lg font-black text-[#1C1B17] dark:text-[#F4EFE6] mb-2 flex items-center justify-between">
+                    <span>The Device</span>
+                    <ArrowRight className="w-4 h-4 text-[#787567] group-hover:translate-x-1 group-hover:text-[#121212] dark:group-hover:text-[#FDE694] transition-all" />
+                  </h3>
+                  <p className="text-xs text-[#787567] dark:text-[#BDB8A4] leading-relaxed">
+                    6.79&quot; FHD+ 90Hz IPS LCD, Snapdragon 4 Gen 2 (4nm), 5000mAh battery, and 50MP sensor.
+                  </p>
+                </div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#121212] dark:text-[#FDE694] mt-5 pt-3 border-t border-[#EBE4CF] dark:border-[#36342A] flex items-center justify-between">
+                  <span>View Full Specs</span>
+                  <span>→</span>
+                </span>
+              </div>
+            </ScrollReveal>
+
+            {/* Card 2: The Team */}
+            <ScrollReveal delayMs={100} distance={16} className="h-full">
+              <div
+                onClick={() => scrollTo('team')}
+                className="group bg-[#FAF3DD] dark:bg-[#1F1E18] p-6 rounded-3xl border border-[#EBE4CF] dark:border-[#36342A] hover:border-[#FDE694] dark:hover:border-[#FDE694]/60 hover:shadow-lg transition-all duration-300 flex flex-col justify-between h-full cursor-pointer"
+              >
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-[#FDE694] text-[#121212] flex items-center justify-center mb-5 group-hover:scale-105 transition-transform shadow-2xs">
+                    <AnimatedUsers size={24} />
+                  </div>
+                  <h3 className="text-lg font-black text-[#1C1B17] dark:text-[#F4EFE6] mb-2 flex items-center justify-between">
+                    <span>The Team</span>
+                    <ArrowRight className="w-4 h-4 text-[#787567] group-hover:translate-x-1 group-hover:text-[#121212] dark:group-hover:text-[#FDE694] transition-all" />
+                  </h3>
+                  <p className="text-xs text-[#787567] dark:text-[#BDB8A4] leading-relaxed">
+                    Meet the admins, core developers, and maintainers driving the SKY smartphone software.
+                  </p>
+                </div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#121212] dark:text-[#FDE694] mt-5 pt-3 border-t border-[#EBE4CF] dark:border-[#36342A] flex items-center justify-between">
+                  <span>Explore Maintainers</span>
+                  <span>→</span>
+                </span>
+              </div>
+            </ScrollReveal>
+
+            {/* Card 3: AOSP ROMs */}
+            <ScrollReveal delayMs={150} distance={16} className="h-full">
+              <div
+                onClick={() => scrollTo('roms')}
+                className="group bg-[#FAF3DD] dark:bg-[#1F1E18] p-6 rounded-3xl border border-[#EBE4CF] dark:border-[#36342A] hover:border-[#FDE694] dark:hover:border-[#FDE694]/60 hover:shadow-lg transition-all duration-300 flex flex-col justify-between h-full cursor-pointer"
+              >
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-[#FDE694] text-[#121212] flex items-center justify-center mb-5 group-hover:scale-105 transition-transform shadow-2xs">
+                    <AnimatedLayers size={24} />
+                  </div>
+                  <h3 className="text-lg font-black text-[#1C1B17] dark:text-[#F4EFE6] mb-2 flex items-center justify-between">
+                    <span>AOSP ROMs</span>
+                    <ArrowRight className="w-4 h-4 text-[#787567] group-hover:translate-x-1 group-hover:text-[#121212] dark:group-hover:text-[#FDE694] transition-all" />
+                  </h3>
+                  <p className="text-xs text-[#787567] dark:text-[#BDB8A4] leading-relaxed">
+                    Browse official and community Android 16 & 17 custom builds, changelogs, and downloads.
+                  </p>
+                </div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#121212] dark:text-[#FDE694] mt-5 pt-3 border-t border-[#EBE4CF] dark:border-[#36342A] flex items-center justify-between">
+                  <span>Explore Builds</span>
+                  <span>→</span>
+                </span>
+              </div>
+            </ScrollReveal>
+
+            {/* Card 4: Community & About */}
+            <ScrollReveal delayMs={200} distance={16} className="h-full">
+              <div
+                onClick={() => scrollTo('community')}
+                className="group bg-[#FAF3DD] dark:bg-[#1F1E18] p-6 rounded-3xl border border-[#EBE4CF] dark:border-[#36342A] hover:border-[#FDE694] dark:hover:border-[#FDE694]/60 hover:shadow-lg transition-all duration-300 flex flex-col justify-between h-full cursor-pointer"
+              >
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-[#FDE694] text-[#121212] flex items-center justify-center mb-5 group-hover:scale-105 transition-transform shadow-2xs">
+                    <AnimatedMessageCircle size={24} />
+                  </div>
+                  <h3 className="text-lg font-black text-[#1C1B17] dark:text-[#F4EFE6] mb-2 flex items-center justify-between">
+                    <span>Community</span>
+                    <ArrowRight className="w-4 h-4 text-[#787567] group-hover:translate-x-1 group-hover:text-[#121212] dark:group-hover:text-[#FDE694] transition-all" />
+                  </h3>
+                  <p className="text-xs text-[#787567] dark:text-[#BDB8A4] leading-relaxed">
+                    Join Telegram discussion groups, view GitHub repos, and participate in development.
+                  </p>
+                </div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#121212] dark:text-[#FDE694] mt-5 pt-3 border-t border-[#EBE4CF] dark:border-[#36342A] flex items-center justify-between">
+                  <span>Join & Learn More</span>
+                  <span>→</span>
+                </span>
+              </div>
+            </ScrollReveal>
           </div>
-        </motion.div>
+        </div>
       </div>
 
-      {/* Subtle Bottom Scroll Indicator */}
-      <motion.button 
-        onClick={() => scrollTo('roms')}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.8 }}
-        className="mt-16 inline-flex flex-col items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors group cursor-pointer"
-      >
-        <span className="text-[11px] font-medium tracking-wider uppercase">Scroll to explore</span>
-        <ArrowDown className="w-4 h-4 text-primary group-hover:translate-y-1 transition-transform animate-bounce" />
-      </motion.button>
+      {/* Support Dialog */}
+      <Dialog open={isSupportOpen} onOpenChange={setIsSupportOpen}>
+        <DialogContent className="bg-[#FAF3DD] dark:bg-[#1A1914] border border-[#EBE4CF] dark:border-[#2C2A22] rounded-[2.5rem] p-8 max-w-sm flex flex-col items-center text-center gap-5 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black text-[#1C1B17] dark:text-[#F4EFE6] flex items-center justify-center gap-2">
+              <Heart className="w-5 h-5 text-rose-500 fill-current" />
+              <span>Support SKY Hub</span>
+            </DialogTitle>
+          </DialogHeader>
 
-      {/* Command Search Overlay Modal */}
-      <SearchOverlay isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+          <div className="relative w-full aspect-square bg-white rounded-3xl p-4 border border-[#EBE4CF] overflow-hidden shadow-inner flex items-center justify-center">
+            {qrLink ? (
+              <img src={qrLink} alt="Payment QR" className="w-full h-full object-contain" />
+            ) : (
+              <span className="text-xs text-muted-foreground font-mono">No QR Configured</span>
+            )}
+          </div>
+
+          <div className="w-full space-y-3">
+            <div className="flex flex-col gap-1 text-left">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#787567] dark:text-[#BDB8A4]">
+                Registry UPI ID
+              </span>
+              <div className="bg-[#FFF8E1] dark:bg-[#202024] p-3 rounded-2xl flex items-center justify-between border border-[#EBE4CF] dark:border-[#303035]">
+                <span className="text-xs font-mono text-[#1C1B17] dark:text-[#F4EFE6] truncate">
+                  {upiId}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={copyUpiId}
+                  className="h-8 w-8 rounded-xl shrink-0 ml-2 hover:bg-[#FDE694]/30"
+                >
+                  {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-[#787567] dark:text-[#9C9888] leading-relaxed">
+              Contributions fund Snapdragon 4 Gen 2 custom kernels, CI builds, and high-speed mirrors.
+            </p>
+          </div>
+
+          <Button
+            onClick={() => setIsSupportOpen(false)}
+            className="w-full h-11 rounded-2xl bg-[#FDE694] hover:bg-[#fbdc70] text-[#121212] font-black text-xs uppercase tracking-wider shadow-none"
+          >
+            Close
+          </Button>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

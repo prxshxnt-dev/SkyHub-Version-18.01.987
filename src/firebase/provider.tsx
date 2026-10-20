@@ -85,6 +85,20 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       auth,
       (firebaseUser) => { // Auth state determined
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
+        if (typeof document !== 'undefined') {
+          if (firebaseUser?.email) {
+            const normalized = firebaseUser.email.toLowerCase().trim();
+            document.cookie = `skyhub_auth_email=${encodeURIComponent(normalized)}; path=/; max-age=2592000; SameSite=Lax`;
+            if (normalized === 'meinkxun@gmail.com' || normalized === 'skyhubowner@gmail.com') {
+              document.cookie = `skyhub_admin_session=active; path=/; max-age=2592000; SameSite=Lax`;
+            } else {
+              document.cookie = `skyhub_admin_session=; path=/; max-age=0; SameSite=Lax`;
+            }
+          } else {
+            document.cookie = `skyhub_auth_email=; path=/; max-age=0; SameSite=Lax`;
+            document.cookie = `skyhub_admin_session=; path=/; max-age=0; SameSite=Lax`;
+          }
+        }
       },
       (error) => { // Auth listener error
         console.error("FirebaseProvider: onAuthStateChanged error:", error);

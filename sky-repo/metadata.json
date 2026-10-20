@@ -1,0 +1,6 @@
+{
+  "name": "SkyROMS",
+  "description": "SkyROMS — Official Custom ROMs, Kernels, Recoveries, and Firmware Ecosystem for POCO M6 Pro 5G / Redmi 12 5G (sky / sm4450).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

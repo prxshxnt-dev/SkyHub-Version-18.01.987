@@ -1,0 +1,43 @@
+# SkyROMS Open-Source Ecosystem Robots.txt
+# Comprehensive search engine crawling & indexing configuration
+
+User-agent: *
+Allow: /
+Allow: /roms
+Allow: /guides
+Allow: /faq
+Allow: /status
+Allow: /team
+Allow: /device
+Allow: /community
+Allow: /about
+Allow: /sitemap.xml
+Allow: /feed.xml
+
+# Explicitly block sensitive administrative, management, and internal endpoints
+Disallow: /admin/
+Disallow: /admin/*
+Disallow: /api/admin/
+Disallow: /admin/login
+Disallow: /admin/register
+Disallow: /admin/approve
+Disallow: /admin/logs
+
+# Major Search Engine Directives
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+# XML Sitemap Declaration
+Sitemap: https://sky-roms.vercel.app/sitemap.xml

@@ -1,8 +1,5 @@
 {
-  "name": "SkyHub",
-  "description": "The premier platform for curated custom ROMs, high-performance kernels, KernelSU modules, and recovery resources built for the Snapdragon 4 Gen 2 ecosystem.",
-  "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "name": "SKY",
+  "description": "Official custom ROMs, kernels, recoveries, and firmware hub for Xiaomi Redmi 12 5G and POCO M6 Pro 5G (sky / sm4450).",
+  "requestFramePermissions": []
 }

@@ -4,9 +4,17 @@ import React, { useState, useEffect } from 'react';
 import { loadUserTheme } from '@/lib/userTheme';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 import { AudioLobby } from '@/components/layout/audio-lobby';
-import { useFirebase, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { DEFAULT_DONATION_CONFIG } from '@/lib/store';
+import { DEFAULT_DONATION_CONFIG, SiteSettings } from '@/lib/store';
+import { 
+  ScrollProgressBar, 
+  DecorativeBackground, 
+  GeometricBackground,
+  MobileNavDock 
+} from '@/components/sky';
+
+const HUB_OWNERS = ['meinkxun@gmail.com', 'skyhubowner@gmail.com'];
 
 function Countdown({ endDate }: { endDate: Date }) {
   const [mounted, setMounted] = useState(false);
@@ -35,19 +43,27 @@ function Countdown({ endDate }: { endDate: Date }) {
 }
 
 export function RootContent({ children }: { children: React.ReactNode }) {
-  const { auth, firestore: db } = useFirebase();
+  const { auth, firestore: db, user } = useFirebase();
   const settingsRef = useMemoFirebase(() => db ? doc(db, 'donation', 'settings') : null, [db]);
   const { data: settings, isLoading: isSettingsLoading } = useDoc(settingsRef);
 
+  const userProfileRef = useMemoFirebase(() => 
+    (user && db) ? doc(db, 'users', user.uid) : null
+  , [db, user]);
+  const { data: profile } = useDoc(userProfileRef);
+
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [hasResolvedSettings, setHasResolvedSettings] = useState(false);
+
+  const isSuperAdmin = !!(user?.email && HUB_OWNERS.includes(user.email.toLowerCase()));
+  const isAdmin = profile?.role === 'admin' || isSuperAdmin;
 
   const isEnabled = settings?.loading 
     ? (settings.loading.enabled !== false)
     : (DEFAULT_DONATION_CONFIG.loading?.enabled !== false);
 
   const globalSettingsRef = useMemoFirebase(() => db ? doc(db, 'settings', 'global') : null, [db]);
-  const { data: globalSettings } = useDoc(globalSettingsRef);
+  const { data: globalSettings } = useDoc<SiteSettings>(globalSettingsRef);
   
   const [isMaintenanceActive, setIsMaintenanceActive] = useState(false);
   const endTime = globalSettings?.maintenanceEndTime && typeof globalSettings.maintenanceEndTime.toDate === 'function' 
@@ -82,9 +98,9 @@ export function RootContent({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!auth) return;
 
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        const hasUserTheme = await loadUserTheme(user.uid);
+    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
+      if (currentUser) {
+        const hasUserTheme = await loadUserTheme(currentUser.uid);
         if (hasUserTheme) return;
       }
     });
@@ -105,6 +121,13 @@ export function RootContent({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      {/* Top Scrolling Progress Bar from SKY-website-v2 */}
+      <ScrollProgressBar />
+
+      {/* Ambient background glows and rotating geometric vector shapes */}
+      <DecorativeBackground />
+      <GeometricBackground />
+
       {isMaintenanceActive ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 text-white p-8 text-center">
           <div className="space-y-4">
@@ -119,10 +142,14 @@ export function RootContent({ children }: { children: React.ReactNode }) {
           onFinished={() => setIsInitialLoad(false)} 
         />
       )}
-      <div className={showLoadingScreen || isMaintenanceActive ? 'hidden' : 'block'}>
+
+      <div className={showLoadingScreen || isMaintenanceActive ? 'hidden' : 'block relative z-10'}>
         {children}
         <AudioLobby />
       </div>
+
+      {/* Floating Bottom Navigation Dock for Mobile Devices */}
+      <MobileNavDock isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />
     </>
   );
 }
