@@ -29,7 +29,10 @@ import {
   Github,
   Send,
   Search,
-  Settings2
+  Settings2,
+  Briefcase,
+  Globe,
+  ExternalLink
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -86,6 +89,7 @@ export function CreditsManager() {
   const [bio, setBio] = useState('');
   const [githubUrl, setGithubUrl] = useState('');
   const [telegramUrl, setTelegramUrl] = useState('');
+  const [portfolioUrl, setPortfolioUrl] = useState('');
   const [order, setOrder] = useState<number>(1);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
@@ -99,6 +103,7 @@ export function CreditsManager() {
     setBio('');
     setGithubUrl('');
     setTelegramUrl('');
+    setPortfolioUrl('');
     setOrder((credits?.length || 0) + 1);
     setAvatarPreview(null);
     setIsDialogOpen(true);
@@ -114,6 +119,7 @@ export function CreditsManager() {
     setBio(credit.bio || '');
     setGithubUrl(credit.githubUrl || '');
     setTelegramUrl(credit.telegramUrl || '');
+    setPortfolioUrl(credit.portfolioUrl || credit.websiteUrl || '');
     setOrder(credit.order ?? 1);
     setAvatarPreview(credit.avatarUrl || null);
     setIsDialogOpen(true);
@@ -198,6 +204,7 @@ export function CreditsManager() {
         bio: bio.trim(),
         githubUrl: githubUrl.trim(),
         telegramUrl: telegramUrl.trim(),
+        portfolioUrl: portfolioUrl.trim(),
         order: Number(order) || 1,
         updatedAt: serverTimestamp(),
         createdAt: editingCredit?.createdAt || serverTimestamp(),
@@ -274,6 +281,7 @@ export function CreditsManager() {
           bio: m.bio || '',
           githubUrl: m.githubUrl || '',
           telegramUrl: m.telegramUrl || '',
+          portfolioUrl: (m as any).portfolioUrl || '',
           order: orderIndex++,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -474,6 +482,17 @@ export function CreditsManager() {
                 {/* Footer and Links */}
                 <div className="pt-3 border-t border-[#EBE4CF] dark:border-[#36342A] flex items-center justify-between text-xs">
                   <div className="flex items-center gap-1.5">
+                    {member.portfolioUrl && (
+                      <a
+                        href={member.portfolioUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 rounded-lg text-amber-700 dark:text-amber-300 hover:text-[#121212] dark:hover:text-[#FDE694] hover:bg-[#FDE694]/30 transition-colors"
+                        title="View Portfolio"
+                      >
+                        <Briefcase className="w-3.5 h-3.5" />
+                      </a>
+                    )}
                     {member.githubUrl && (
                       <a
                         href={member.githubUrl}
@@ -768,6 +787,23 @@ export function CreditsManager() {
                   className="rounded-xl bg-white/70 dark:bg-black/40 border-[#EBE4CF] dark:border-[#36342A] text-xs"
                 />
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-[#49473E] dark:text-[#C5C0AF] flex items-center gap-1.5">
+                  <Briefcase className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>Portfolio / Website Link</span>
+                </Label>
+                <span className="text-[10px] text-[#787567] dark:text-[#8E8A7A]">Optional</span>
+              </div>
+              <Input
+                type="url"
+                value={portfolioUrl}
+                onChange={(e) => setPortfolioUrl(e.target.value)}
+                placeholder="https://myportfolio.dev or https://github.com/..."
+                className="rounded-xl bg-white/70 dark:bg-black/40 border-[#EBE4CF] dark:border-[#36342A] text-xs"
+              />
             </div>
 
             <div className="space-y-1.5">

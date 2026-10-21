@@ -21,7 +21,17 @@ import {
   Loader2,
   Check,
   Settings2,
-  ExternalLink
+  ExternalLink,
+  Briefcase,
+  Globe,
+  Code2,
+  Layers,
+  Cpu,
+  Award,
+  ChevronRight,
+  BookmarkCheck,
+  Compass,
+  FolderGit2
 } from 'lucide-react';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, query, orderBy, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
@@ -36,10 +46,15 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import Link from 'next/link';
 
-const TeamAvatar: React.FC<{ name: string; avatarUrl?: string }> = ({ name, avatarUrl }) => {
+const TeamAvatar: React.FC<{ name: string; avatarUrl?: string; size?: 'sm' | 'md' | 'lg' }> = ({ 
+  name, 
+  avatarUrl,
+  size = 'md' 
+}) => {
   const initials = (name || 'SK')
     .split(' ')
     .filter(Boolean)
@@ -48,8 +63,14 @@ const TeamAvatar: React.FC<{ name: string; avatarUrl?: string }> = ({ name, avat
     .slice(0, 2)
     .toUpperCase() || name.slice(0, 2).toUpperCase();
 
+  const sizeClasses = {
+    sm: 'w-12 h-12 rounded-2xl text-base',
+    md: 'w-16 h-16 sm:w-20 sm:h-20 aspect-square rounded-3xl text-lg sm:text-xl',
+    lg: 'w-20 h-20 sm:w-24 sm:h-24 rounded-3xl text-2xl',
+  }[size];
+
   return (
-    <div className="w-16 h-16 sm:w-20 sm:h-20 aspect-square rounded-3xl bg-gradient-to-br from-[#FFF8E1] to-[#FAF3DD] dark:from-[#151410] dark:to-[#1F1E18] border border-[#EBE4CF] dark:border-[#36342A] shadow-xs overflow-hidden shrink-0 relative flex items-center justify-center">
+    <div className={`${sizeClasses} bg-gradient-to-br from-[#FFF8E1] to-[#FAF3DD] dark:from-[#151410] dark:to-[#1F1E18] border border-[#EBE4CF] dark:border-[#36342A] shadow-xs overflow-hidden shrink-0 relative flex items-center justify-center`}>
       {avatarUrl && (
         <img
           src={avatarUrl}
@@ -65,7 +86,7 @@ const TeamAvatar: React.FC<{ name: string; avatarUrl?: string }> = ({ name, avat
         />
       )}
       <div 
-        className="w-full h-full bg-[#FAF3DD] dark:bg-[#1F1E18] items-center justify-center text-lg sm:text-xl font-extrabold text-[#49473E] dark:text-[#F4EFE6] select-none"
+        className="w-full h-full bg-[#FAF3DD] dark:bg-[#1F1E18] items-center justify-center font-extrabold text-[#49473E] dark:text-[#F4EFE6] select-none"
         style={{ display: avatarUrl ? 'none' : 'flex' }}
       >
         {initials}
@@ -137,6 +158,269 @@ const RenderRoleBadges: React.FC<{ role?: string; type?: string }> = ({ role = '
   );
 };
 
+interface PortfolioProject {
+  title: string;
+  description: string;
+  tag: string;
+  link?: string;
+}
+
+interface MemberPortfolioDetails {
+  headline: string;
+  focusArea: string;
+  projects: PortfolioProject[];
+  skills: string[];
+  stats: { label: string; value: string }[];
+}
+
+/**
+ * Returns tailored portfolio data for a given team member.
+ * Supports preset custom portfolios for core developers & dynamic fallbacks.
+ */
+function getMemberPortfolioData(member: any): MemberPortfolioDetails {
+  const handle = (member.handle || '').toLowerCase();
+  const id = (member.id || '').toLowerCase();
+  const name = (member.name || '').toLowerCase();
+
+  // 1. Amit (Founder)
+  if (id.includes('amit') || handle.includes('amitsharma') || name.includes('amit')) {
+    return {
+      headline: 'Founder & Lead Platform Architect',
+      focusArea: 'Device Tree Architecture, AOSPA, and Ecosystem Bringup',
+      projects: [
+        {
+          title: 'sm4450-sky Main Device Tree Source',
+          description: 'Pioneered the open-source device tree architecture and established vendor blobs for Xiaomi Redmi 12 5G / POCO M6 Pro 5G.',
+          tag: 'Core Tree'
+        },
+        {
+          title: 'AOSPA (Paranoid Android) Adaptation',
+          description: 'Spearheaded community crowdfunding initiatives and kernel bringup for the initial Paranoid Android builds on Qualcomm SM4450.',
+          tag: 'Custom ROM'
+        },
+        {
+          title: 'Ecosystem Foundation & Developer Coordination',
+          description: 'Recruited maintainers, coordinated continuous integration, and unified recovery tree developments for the community.',
+          tag: 'Leadership'
+        }
+      ],
+      skills: ['Qualcomm SM4450', 'Device Tree Bringup', 'AOSP Architecture', 'Community Funding', 'Vendor Blobs', 'Git Workflow'],
+      stats: [
+        { label: 'Role', value: 'Founder & Architect' },
+        { label: 'Platform', value: 'SKY (sm4450)' },
+        { label: 'Focus', value: 'Hardware Bringup' }
+      ]
+    };
+  }
+
+  // 2. Sachit (someone3_124) - Web & Platform Builder
+  if (id.includes('sachit') || handle.includes('someone3') || name.includes('sachit')) {
+    return {
+      headline: 'Platform Creator & Lead Full-Stack Interface Architect',
+      focusArea: 'SKY Web Hub, Interactive ROM Showcases, Dynamic Wallpaper Engine & UX',
+      projects: [
+        {
+          title: 'SKY Next.js Digital Platform & Ecosystem Hub',
+          description: 'Architected and built the full web application with App Router, interactive device specifications, responsive typography, and dark mode.',
+          tag: 'Web Platform',
+          link: member.portfolioUrl || 'https://github.com/sachit1751-art'
+        },
+        {
+          title: 'Axion AOSP & Screenshot Showcase Engine',
+          description: 'Engineered real-time carousel, image compression pipelines, and super admin inline live editing capabilities.',
+          tag: 'Interactive UI'
+        },
+        {
+          title: 'Dynamic Wallpaper Gallery & OTA Guides',
+          description: 'Developed downloadable multi-tier wallpaper gallery with instant search, category filters, and step-by-step flashing guides.',
+          tag: 'UX / Motion'
+        }
+      ],
+      skills: ['Next.js 15', 'React 19', 'TypeScript', 'Tailwind CSS', 'Motion / Framer', 'Firebase Firestore', 'UI/UX Design', 'Performance Optimization'],
+      stats: [
+        { label: 'Role', value: 'Platform Architect' },
+        { label: 'Stack', value: 'Next.js & React' },
+        { label: 'Projects', value: 'SKY Web & Hub' }
+      ]
+    };
+  }
+
+  // 3. Tushar Bharti (lostark13)
+  if (id.includes('lostark') || handle.includes('lostark13') || name.includes('tushar')) {
+    return {
+      headline: 'Core Kernel Architect & Lineage / BlissROM Maintainer',
+      focusArea: 'Upstream Linux Kernel, CPU Frequency Governors, LineageOS & Bliss builds',
+      projects: [
+        {
+          title: 'SM4450 OSS Kernel Source',
+          description: 'Maintains open-source kernel with upstream stable Linux patches, memory management enhancements, and battery profiles.',
+          tag: 'Kernel Architecture'
+        },
+        {
+          title: 'Official LineageOS & BlissROM Ports',
+          description: 'Continuous delivery of stable releases with official safety net pass, banking apps readiness, and hardware acceleration.',
+          tag: 'Custom ROM'
+        },
+        {
+          title: 'Audio, Display & Biometrics HAL Integration',
+          description: 'Tuned low-latency audio HAL, 90Hz AdaptiveSync display drivers, and power-key fingerprint sensor drivers.',
+          tag: 'Hardware HAL'
+        }
+      ],
+      skills: ['Linux Kernel', 'Qualcomm SM4450', 'C/C++', 'LineageOS', 'BlissROM', 'Device Tree', 'Git'],
+      stats: [
+        { label: 'Role', value: 'Core Developer' },
+        { label: 'Specialty', value: 'Kernel & DT' },
+        { label: 'Status', value: 'Official Lead' }
+      ]
+    };
+  }
+
+  // 4. Sushmit (redducc)
+  if (id.includes('redducc') || handle.includes('redducc') || name.includes('sushmit')) {
+    return {
+      headline: 'Core Developer & PenguinOS / AOSPA Maintainer',
+      focusArea: 'Device Trees, Kernel Maintenance, and Performance Governors',
+      projects: [
+        {
+          title: 'PenguinOS & Paranoid Android Maintainership',
+          description: 'Primary builder and maintainer for daily-driver stability on Xiaomi Redmi 12 5G / POCO M6 Pro 5G.',
+          tag: 'Custom ROM'
+        },
+        {
+          title: 'Thermal & Power Profiling',
+          description: 'Engineered custom thermal throttle limits to ensure zero lag under intense gaming and daily multitasking.',
+          tag: 'Optimization'
+        }
+      ],
+      skills: ['AOSP', 'PenguinOS', 'Device Tree', 'Thermal Profiles', 'C++'],
+      stats: [
+        { label: 'Role', value: 'Core Developer' },
+        { label: 'Target', value: 'PenguinOS / AOSPA' },
+        { label: 'Status', value: 'Active Maintainer' }
+      ]
+    };
+  }
+
+  // 5. Sarim Rasool (TopexGuy)
+  if (id.includes('topex') || handle.includes('topex') || name.includes('sarim')) {
+    return {
+      headline: 'Kernel Engineer & Multi-ROM Maintainer',
+      focusArea: 'MGLRU Memory Management, PixelOS, VoltageOS, and iode',
+      projects: [
+        {
+          title: 'Multi-Gen LRU (MGLRU) Kernel Port',
+          description: 'Implemented modern memory paging algorithms to minimize memory thrashing and improve app retention.',
+          tag: 'Memory Subsystem'
+        },
+        {
+          title: 'PixelOS & VoltageOS Releases',
+          description: 'Delivered Pixel UI features, extreme customizability, and battery endurance tuning.',
+          tag: 'Custom ROM'
+        }
+      ],
+      skills: ['MGLRU', 'OSS Kernel', 'PixelOS', 'VoltageOS', 'Memory Tuning'],
+      stats: [
+        { label: 'Role', value: 'Developer & Maintainer' },
+        { label: 'Focus', value: 'MGLRU & Kernel' },
+        { label: 'Status', value: 'Official' }
+      ]
+    };
+  }
+
+  // 6. Arrowsploit
+  if (id.includes('arrowsploit') || handle.includes('arrowsploit')) {
+    return {
+      headline: 'Official AxionAOSP Maintainer',
+      focusArea: 'AxionAOSP Releases, OTA Pipeline, System Stability',
+      projects: [
+        {
+          title: 'Official AxionAOSP for SKY',
+          description: 'Clean, lightning-fast Android Open Source Project firmware optimized for Qualcomm SM4450 hardware.',
+          tag: 'Axion AOSP'
+        },
+        {
+          title: 'Automated OTA Delivery Pipeline',
+          description: 'Engineered update validation and OTA delivery channels for seamless device updates.',
+          tag: 'DevOps / OTA'
+        }
+      ],
+      skills: ['AxionAOSP', 'AOSP Building', 'OTA Infrastructure', 'System Tuning'],
+      stats: [
+        { label: 'Role', value: 'Official Maintainer' },
+        { label: 'Project', value: 'AxionAOSP' },
+        { label: 'Status', value: 'Active' }
+      ]
+    };
+  }
+
+  // 7. Dhanush (solocaptainblaze)
+  if (id.includes('solocaptain') || handle.includes('solocaptain') || name.includes('dhanush')) {
+    return {
+      headline: 'Official EverestOS Maintainer',
+      focusArea: 'EverestOS, Custom Haptics, and Audio Tweaks',
+      projects: [
+        {
+          title: 'EverestOS Official Builds',
+          description: 'Fine-tuned EverestOS firmware featuring rich customization, smooth animations, and solid battery life.',
+          tag: 'EverestOS'
+        }
+      ],
+      skills: ['EverestOS', 'Device Porting', 'ROM Maintenance', 'Android HAL'],
+      stats: [
+        { label: 'Role', value: 'Maintainer' },
+        { label: 'System', value: 'EverestOS' },
+        { label: 'Status', value: 'Official' }
+      ]
+    };
+  }
+
+  // 8. Lua (@C8_XD)
+  if (id.includes('lua') || handle.includes('c8_xd') || name.includes('lua')) {
+    return {
+      headline: 'Official LunarisAOSP Maintainer',
+      focusArea: 'LunarisAOSP on Redmi 12 5G / POCO M6 Pro 5G',
+      projects: [
+        {
+          title: 'LunarisAOSP Official SKY Releases',
+          description: 'Maintains LunarisAOSP with high stability, fast gaming response, and custom Treble overlays.',
+          tag: 'LunarisAOSP'
+        }
+      ],
+      skills: ['LunarisAOSP', 'Device Tree', 'Kernel Tuning', 'Bug Triaging'],
+      stats: [
+        { label: 'Role', value: 'Maintainer' },
+        { label: 'Project', value: 'LunarisAOSP' },
+        { label: 'Status', value: 'Official' }
+      ]
+    };
+  }
+
+  // Generic Dynamic Fallback
+  return {
+    headline: member.role || 'SKY Contributor & Maintainer',
+    focusArea: member.bio || 'Contributing to custom ROMs, device tree maintenance, testing, and community support.',
+    projects: [
+      {
+        title: `${member.name} - ${member.role || 'Contributor'}`,
+        description: member.bio || 'Active maintainer contributing to device compatibility, stability updates, and community support for SKY (SM4450).',
+        tag: member.type ? member.type.toUpperCase() : 'COMMUNITY'
+      },
+      {
+        title: 'Device Tree & Platform Support',
+        description: 'Ongoing work ensuring compatibility and bug fixes for Xiaomi Redmi 12 5G & POCO M6 Pro 5G.',
+        tag: 'Hardware'
+      }
+    ],
+    skills: ['SM4450 (SKY)', 'Custom Firmware', 'Device Bringup', 'Android AOSP', 'Community QA'],
+    stats: [
+      { label: 'Role', value: member.role || 'Contributor' },
+      { label: 'Handle', value: member.handle || 'Community' },
+      { label: 'Ecosystem', value: 'SKY SM4450' }
+    ]
+  };
+}
+
 export const TeamSection: React.FC = () => {
   const db = useFirestore();
   const { user } = useUser();
@@ -159,6 +443,9 @@ export const TeamSection: React.FC = () => {
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const sectionRef = useRef<HTMLElement | null>(null);
 
+  // Portfolio Viewer Modal State
+  const [selectedPortfolioMember, setSelectedPortfolioMember] = useState<any | null>(null);
+
   // Edit Member Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<any | null>(null);
@@ -170,6 +457,7 @@ export const TeamSection: React.FC = () => {
   const [editBio, setEditBio] = useState('');
   const [editGithubUrl, setEditGithubUrl] = useState('');
   const [editTelegramUrl, setEditTelegramUrl] = useState('');
+  const [editPortfolioUrl, setEditPortfolioUrl] = useState('');
   const [editOrder, setEditOrder] = useState<number>(1);
   const [isSaving, setIsSaving] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
@@ -244,6 +532,7 @@ export const TeamSection: React.FC = () => {
     setEditBio('');
     setEditGithubUrl('');
     setEditTelegramUrl('');
+    setEditPortfolioUrl('');
     setEditOrder(humanMembers.length + 1);
     setIsEditModalOpen(true);
   };
@@ -258,6 +547,7 @@ export const TeamSection: React.FC = () => {
     setEditBio(member.bio || '');
     setEditGithubUrl(member.githubUrl || '');
     setEditTelegramUrl(member.telegramUrl || '');
+    setEditPortfolioUrl(member.portfolioUrl || member.websiteUrl || '');
     setEditOrder(member.order ?? 1);
     setIsEditModalOpen(true);
   };
@@ -313,6 +603,7 @@ export const TeamSection: React.FC = () => {
             bio: tm.bio || '',
             githubUrl: tm.githubUrl || '',
             telegramUrl: tm.telegramUrl || '',
+            portfolioUrl: (tm as any).portfolioUrl || '',
             order: seedOrder++,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
@@ -333,6 +624,7 @@ export const TeamSection: React.FC = () => {
         bio: editBio.trim(),
         githubUrl: editGithubUrl.trim(),
         telegramUrl: editTelegramUrl.trim(),
+        portfolioUrl: editPortfolioUrl.trim(),
         order: Number(editOrder) || 1,
         updatedAt: serverTimestamp(),
         createdAt: editingMember?.createdAt || serverTimestamp(),
@@ -361,15 +653,12 @@ export const TeamSection: React.FC = () => {
     if (!confirm(`Are you sure you want to delete "${member.name}" from the credits section?`)) return;
 
     try {
-      // If collection is not seeded yet, seed first, then delete this specific item
+      // If dbCredits is empty, seed first so we only delete this one
       if (!dbCredits || dbCredits.length === 0) {
         let seedOrder = 1;
         for (const tm of TEAM_MEMBERS) {
           const sId = `team_${tm.id || seedOrder}`;
-          if (tm.name === member.name || tm.handle === member.handle) {
-            seedOrder++;
-            continue; // Skip the one being deleted!
-          }
+          if (tm.name === member.name || tm.handle === member.handle) continue; // skip deleted one
           await setDoc(doc(db, 'credits', sId), {
             id: sId,
             name: tm.name,
@@ -380,25 +669,25 @@ export const TeamSection: React.FC = () => {
             bio: tm.bio || '',
             githubUrl: tm.githubUrl || '',
             telegramUrl: tm.telegramUrl || '',
+            portfolioUrl: (tm as any).portfolioUrl || '',
             order: seedOrder++,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           }, { merge: true });
         }
       } else {
-        const docId = member.id || `team_${member.id}`;
-        await deleteDoc(doc(db, 'credits', docId));
+        await deleteDoc(doc(db, 'credits', member.id));
       }
 
       toast({
-        title: 'Member Deleted',
-        description: `"${member.name}" was removed from the credit section.`,
+        title: 'Member Removed',
+        description: `"${member.name}" has been removed from credits.`,
       });
     } catch (err: any) {
       toast({
         variant: 'destructive',
         title: 'Delete Failed',
-        description: err.message || 'Could not remove member.',
+        description: err.message,
       });
     }
   };
@@ -407,28 +696,29 @@ export const TeamSection: React.FC = () => {
     if (!db) return;
     setIsSeeding(true);
     try {
-      let orderIndex = 1;
-      for (const m of TEAM_MEMBERS) {
-        const creditId = `team_${m.id || orderIndex}`;
-        await setDoc(doc(db, 'credits', creditId), {
-          id: creditId,
-          name: m.name,
-          handle: m.handle || '',
-          role: m.role || 'Contributor',
-          type: m.type || 'maintainer',
-          avatarUrl: m.avatarUrl || '',
-          bio: m.bio || '',
-          githubUrl: m.githubUrl || '',
-          telegramUrl: m.telegramUrl || '',
-          order: orderIndex++,
+      let seedOrder = 1;
+      for (const tm of TEAM_MEMBERS) {
+        const sId = `team_${tm.id || seedOrder}`;
+        await setDoc(doc(db, 'credits', sId), {
+          id: sId,
+          name: tm.name,
+          handle: tm.handle || '',
+          role: tm.role || 'Contributor',
+          type: tm.type || 'maintainer',
+          avatarUrl: tm.avatarUrl || '',
+          bio: tm.bio || '',
+          githubUrl: tm.githubUrl || '',
+          telegramUrl: tm.telegramUrl || '',
+          portfolioUrl: (tm as any).portfolioUrl || '',
+          order: seedOrder++,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         }, { merge: true });
       }
 
       toast({
-        title: 'Credits Synchronized to Firestore',
-        description: `All ${TEAM_MEMBERS.length} members loaded into Firestore! You can now edit or delete any of them.`,
+        title: 'Team Synced to Firestore',
+        description: `${TEAM_MEMBERS.length} members loaded into the credits database.`,
       });
     } catch (err: any) {
       toast({
@@ -504,6 +794,10 @@ export const TeamSection: React.FC = () => {
       ).length,
     },
   ];
+
+  const activePortfolioDetails = selectedPortfolioMember 
+    ? getMemberPortfolioData(selectedPortfolioMember)
+    : null;
 
   return (
     <section ref={sectionRef} className="py-6 sm:py-10 px-4 sm:px-6 max-w-7xl mx-auto space-y-8">
@@ -681,14 +975,42 @@ export const TeamSection: React.FC = () => {
                 </div>
               </div>
 
+              {/* Card Footer & Links - With prominent Option to View Portfolio */}
               <div className="flex flex-wrap items-center justify-between gap-2 mt-4 pt-3 border-t border-[#EBE4CF]/40 dark:border-[#36342A]/40">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Option to View Portfolio */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPortfolioMember(member)}
+                    className="inline-flex items-center justify-center min-h-[40px] gap-2 px-3.5 py-1.5 rounded-xl bg-[#FDE694]/25 hover:bg-[#FDE694] text-xs font-bold text-[#1C1B17] dark:text-[#FDE694] hover:text-[#121212] border border-[#FDE694]/50 dark:border-[#FDE694]/30 shadow-2xs transition-all duration-200 active:scale-95 cursor-pointer group/pf"
+                    title={`View ${member.name}'s Portfolio & Contributions`}
+                  >
+                    <Briefcase className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300 group-hover/pf:text-[#121212] group-hover/pf:scale-110 transition-transform" />
+                    <span>View Portfolio</span>
+                  </button>
+
+                  {/* Direct Portfolio Website Link (if configured) */}
+                  {(member.portfolioUrl || member.websiteUrl) && (
+                    <a
+                      href={member.portfolioUrl || member.websiteUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center min-h-[40px] gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFF8E1] dark:bg-[#1C1A14] text-xs font-bold text-[#49473E] dark:text-[#F4EFE6] hover:text-[#121212] dark:hover:text-[#FDE694] hover:bg-[#FDE694]/30 border border-[#EBE4CF] dark:border-[#2C2A22] transition-colors active:scale-95"
+                      title="Visit Portfolio Website"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      <span className="hidden sm:inline">Portfolio Site</span>
+                      <ExternalLink className="w-3 h-3 opacity-60" />
+                    </a>
+                  )}
+
                   {member.githubUrl && (
                     <a
                       href={member.githubUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center justify-center min-h-[40px] gap-2 px-3.5 py-1.5 rounded-xl bg-[#FFF8E1] dark:bg-[#1C1A14] text-xs font-bold text-[#49473E] dark:text-[#F4EFE6] hover:text-[#121212] dark:hover:text-[#FDE694] hover:bg-[#FDE694]/30 border border-[#EBE4CF] dark:border-[#2C2A22] transition-colors active:scale-95"
+                      title="GitHub Profile"
                     >
                       <Github className="w-3.5 h-3.5" />
                       <span>GitHub</span>
@@ -700,6 +1022,7 @@ export const TeamSection: React.FC = () => {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center justify-center min-h-[40px] gap-2 px-3.5 py-1.5 rounded-xl bg-[#FFF8E1] dark:bg-[#1C1A14] text-xs font-bold text-[#49473E] dark:text-[#F4EFE6] hover:text-[#121212] dark:hover:text-[#FDE694] hover:bg-[#FDE694]/30 border border-[#EBE4CF] dark:border-[#2C2A22] transition-colors active:scale-95"
+                      title="Telegram Contact"
                     >
                       <Send className="w-3.5 h-3.5" />
                       <span>Telegram</span>
@@ -736,6 +1059,239 @@ export const TeamSection: React.FC = () => {
         </div>
       )}
 
+      {/* Interactive Portfolio Showcase Modal */}
+      <Dialog 
+        open={!!selectedPortfolioMember} 
+        onOpenChange={(open) => !open && setSelectedPortfolioMember(null)}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-gradient-to-b from-[#FFFDF7] to-[#FAF5E6] dark:from-[#181712] dark:to-[#12110D] border border-[#EBE4CF] dark:border-[#36342A] p-6 sm:p-8 shadow-2xl">
+          {selectedPortfolioMember && activePortfolioDetails && (
+            <div className="space-y-6">
+              <DialogHeader className="space-y-3">
+                <div className="flex items-start gap-4">
+                  <TeamAvatar 
+                    name={selectedPortfolioMember.name} 
+                    avatarUrl={selectedPortfolioMember.avatarUrl} 
+                    size="lg" 
+                  />
+                  <div className="space-y-1.5 flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <DialogTitle className="text-xl sm:text-2xl font-black text-[#1C1B17] dark:text-[#F4EFE6] tracking-tight">
+                        {selectedPortfolioMember.name}
+                      </DialogTitle>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#FDE694]/40 text-[#121212] dark:text-[#FDE694] border border-[#FDE694]/50">
+                        <Award className="w-3 h-3" />
+                        <span>Verified Contributor</span>
+                      </span>
+                    </div>
+
+                    <p className="text-xs sm:text-sm font-semibold text-[#787567] dark:text-[#BDB8A4]">
+                      {selectedPortfolioMember.handle} • {activePortfolioDetails.headline}
+                    </p>
+
+                    <div className="pt-1">
+                      <RenderRoleBadges 
+                        role={selectedPortfolioMember.role} 
+                        type={selectedPortfolioMember.type} 
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <DialogDescription className="text-xs sm:text-sm text-[#787567] dark:text-[#BDB8A4] leading-relaxed pt-2">
+                  {selectedPortfolioMember.bio || activePortfolioDetails.focusArea}
+                </DialogDescription>
+              </DialogHeader>
+
+              {/* External Portfolio Banner (if configured) */}
+              {(selectedPortfolioMember.portfolioUrl || selectedPortfolioMember.websiteUrl) ? (
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-[#FFF8E1] to-[#FAF3DD] dark:from-[#211F17] dark:to-[#1A1914] border border-[#FDE694]/60 dark:border-[#FDE694]/30 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-300">
+                      <Globe className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <span>Live Portfolio & Showcase</span>
+                    </div>
+                    <p className="text-xs text-[#787567] dark:text-[#BDB8A4] truncate max-w-md">
+                      {selectedPortfolioMember.portfolioUrl || selectedPortfolioMember.websiteUrl}
+                    </p>
+                  </div>
+
+                  <a
+                    href={selectedPortfolioMember.portfolioUrl || selectedPortfolioMember.websiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#FDE694] text-[#121212] hover:bg-[#FCE076] text-xs font-black uppercase tracking-wider shadow-xs hover:shadow-md transition-all active:scale-95 shrink-0"
+                  >
+                    <span>Visit Live Portfolio</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              ) : (
+                <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5 border border-[#EBE4CF] dark:border-[#2C2A22] flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 text-[#787567] dark:text-[#BDB8A4]">
+                    <Briefcase className="w-4 h-4 text-[#FDE694]" />
+                    <span>Official SKY Ecosystem Profile & Contributions Portfolio</span>
+                  </div>
+                  {isSuperAdmin && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const m = selectedPortfolioMember;
+                        setSelectedPortfolioMember(null);
+                        openEditMemberDialog(m);
+                      }}
+                      className="text-xs font-bold text-amber-800 dark:text-amber-300 gap-1 h-7 rounded-lg"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Add External Link</span>
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* Stats overview pills */}
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                {activePortfolioDetails.stats.map((st, idx) => (
+                  <div 
+                    key={idx}
+                    className="p-3 rounded-2xl bg-white/70 dark:bg-black/40 border border-[#EBE4CF] dark:border-[#36342A] text-center space-y-0.5"
+                  >
+                    <span className="text-[10px] uppercase font-bold text-[#787567] dark:text-[#8E8A7A] block">
+                      {st.label}
+                    </span>
+                    <span className="text-xs sm:text-sm font-black text-[#1C1B17] dark:text-[#F4EFE6] block truncate">
+                      {st.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Key Contributions & Projects */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <FolderGit2 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-[#1C1B17] dark:text-[#F4EFE6]">
+                    Key Works & Contributions
+                  </h4>
+                </div>
+
+                <div className="space-y-2.5">
+                  {activePortfolioDetails.projects.map((proj, pIdx) => (
+                    <div
+                      key={pIdx}
+                      className="p-4 rounded-2xl bg-white/80 dark:bg-black/30 border border-[#EBE4CF] dark:border-[#36342A] space-y-1.5 hover:border-[#FDE694]/60 transition-colors"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <h5 className="text-xs sm:text-sm font-bold text-[#1C1B17] dark:text-[#F4EFE6]">
+                          {proj.title}
+                        </h5>
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-900 dark:text-amber-300 border border-amber-500/30">
+                          {proj.tag}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#787567] dark:text-[#BDB8A4] leading-relaxed">
+                        {proj.description}
+                      </p>
+                      {proj.link && (
+                        <a
+                          href={proj.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-300 hover:underline pt-0.5"
+                        >
+                          <span>Explore Project</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Technical Skills & Specializations */}
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <Cpu className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-[#1C1B17] dark:text-[#F4EFE6]">
+                    Specializations & Competencies
+                  </h4>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {activePortfolioDetails.skills.map((skill, sIdx) => (
+                    <span
+                      key={sIdx}
+                      className="px-3 py-1 rounded-xl text-xs font-semibold bg-[#FFF8E1] dark:bg-[#1C1A14] text-[#49473E] dark:text-[#D5D0BE] border border-[#EBE4CF] dark:border-[#2C2A22]"
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Footer & Direct Contact Actions */}
+              <div className="pt-4 border-t border-[#EBE4CF] dark:border-[#36342A] flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  {(selectedPortfolioMember.portfolioUrl || selectedPortfolioMember.websiteUrl) && (
+                    <a
+                      href={selectedPortfolioMember.portfolioUrl || selectedPortfolioMember.websiteUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#FDE694] text-[#121212] hover:bg-[#FCE076] transition-colors shadow-2xs"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>Portfolio Website</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+
+                  {selectedPortfolioMember.githubUrl && (
+                    <a
+                      href={selectedPortfolioMember.githubUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#FFF8E1] dark:bg-[#1C1A14] text-[#49473E] dark:text-[#F4EFE6] hover:bg-[#FDE694]/30 border border-[#EBE4CF] dark:border-[#2C2A22] transition-colors"
+                    >
+                      <Github className="w-3.5 h-3.5" />
+                      <span>GitHub Profile</span>
+                    </a>
+                  )}
+
+                  {selectedPortfolioMember.telegramUrl && (
+                    <a
+                      href={selectedPortfolioMember.telegramUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#FFF8E1] dark:bg-[#1C1A14] text-[#49473E] dark:text-[#F4EFE6] hover:bg-[#FDE694]/30 border border-[#EBE4CF] dark:border-[#2C2A22] transition-colors"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Telegram</span>
+                    </a>
+                  )}
+                </div>
+
+                {isSuperAdmin && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const m = selectedPortfolioMember;
+                      setSelectedPortfolioMember(null);
+                      openEditMemberDialog(m);
+                    }}
+                    className="text-xs font-bold gap-1.5 rounded-xl border-[#EBE4CF] dark:border-[#36342A]"
+                  >
+                    <Pencil className="w-3 h-3" />
+                    <span>Edit Portfolio Details</span>
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Edit Header Modal */}
       <Dialog open={isHeaderModalOpen} onOpenChange={setIsHeaderModalOpen}>
         <DialogContent className="max-w-md rounded-3xl bg-[#FAF3DD] dark:bg-[#1A1914] border border-[#EBE4CF] dark:border-[#36342A] p-6 sm:p-8">
@@ -754,20 +1310,19 @@ export const TeamSection: React.FC = () => {
                 value={editHeaderTitle}
                 onChange={(e) => setEditHeaderTitle(e.target.value)}
                 placeholder="CREDITS & MAINTAINERS"
-                required
-                className="rounded-xl bg-white/70 dark:bg-black/40 border-[#EBE4CF] dark:border-[#36342A] text-xs font-medium"
+                className="rounded-xl bg-white/70 dark:bg-black/40 border-[#EBE4CF] dark:border-[#36342A] text-xs font-black uppercase"
               />
             </div>
 
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-[#49473E] dark:text-[#C5C0AF]">
-                Tagline / Description
+                Section Subtitle / Tagline
               </Label>
               <Textarea
                 value={editHeaderSubtitle}
                 onChange={(e) => setEditHeaderSubtitle(e.target.value)}
                 placeholder="The developers, device maintainers, and contributors driving the SKY ecosystem."
-                className="rounded-xl bg-white/70 dark:bg-black/40 border-[#EBE4CF] dark:border-[#36342A] text-xs min-h-[70px]"
+                className="rounded-xl bg-white/70 dark:bg-black/40 border-[#EBE4CF] dark:border-[#36342A] text-xs min-h-[80px]"
               />
             </div>
 
@@ -793,9 +1348,9 @@ export const TeamSection: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit / Add Member Dialog */}
+      {/* Edit / Add Member Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="max-w-lg rounded-3xl bg-[#FAF3DD] dark:bg-[#1A1914] border border-[#EBE4CF] dark:border-[#36342A] p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl bg-[#FAF3DD] dark:bg-[#1A1914] border border-[#EBE4CF] dark:border-[#36342A] p-6 sm:p-8">
           <DialogHeader>
             <DialogTitle className="text-lg font-black uppercase tracking-tight text-[#1C1B17] dark:text-[#F4EFE6]">
               {editingMember ? `Edit Member: ${editingMember.name}` : 'Add New Credit Member'}
@@ -927,6 +1482,27 @@ export const TeamSection: React.FC = () => {
                 placeholder="Core developer maintaining DT/kernel work, custom builds, and device trees..."
                 className="rounded-xl bg-white/70 dark:bg-black/40 border-[#EBE4CF] dark:border-[#36342A] text-xs min-h-[70px]"
               />
+            </div>
+
+            {/* Portfolio / Website Link Field */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-[#49473E] dark:text-[#C5C0AF] flex items-center gap-1.5">
+                  <Briefcase className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>Portfolio / Personal Website URL</span>
+                </Label>
+                <span className="text-[10px] text-[#787567] dark:text-[#8E8A7A]">Optional</span>
+              </div>
+              <Input
+                type="url"
+                value={editPortfolioUrl}
+                onChange={(e) => setEditPortfolioUrl(e.target.value)}
+                placeholder="https://myportfolio.dev or https://github.com/username"
+                className="rounded-xl bg-white/70 dark:bg-black/40 border-[#EBE4CF] dark:border-[#36342A] text-xs"
+              />
+              <span className="text-[10px] text-[#787567] dark:text-[#8E8A7A] block">
+                Link to their personal portfolio, resume, or project showcase website.
+              </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

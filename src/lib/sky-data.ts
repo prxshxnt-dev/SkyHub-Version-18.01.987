@@ -85,6 +85,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     "handle": "@amitsharma0706",
     "avatarUrl": "/admins/amitsharma0706/pfp.jpg",
     "telegramUrl": "https://t.me/amitsharma0706",
+    "portfolioUrl": "https://t.me/amitsharma0706",
     "bio": "Founder and primary architect of the SKY project. He established the development team, pioneered the custom ROM journey, and successfully led crowdfunding initiatives for the main device tree and AOSPA development."
   },
   // Core Developers
@@ -97,6 +98,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     "avatarUrl": "/admins/lostark13/pfp.jpg",
     "githubUrl": "https://github.com/lostark13",
     "telegramUrl": "https://t.me/lostark13",
+    "portfolioUrl": "https://github.com/lostark13",
     "bio": "Core developer handling device trees, kernel architecture, Lineage/Bliss builds, and overall SKY project development."
   },
   {
@@ -108,6 +110,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     "avatarUrl": "/admins/redducc/pfp.jpg",
     "githubUrl": "https://github.com/redducc",
     "telegramUrl": "https://t.me/redducc",
+    "portfolioUrl": "https://github.com/redducc",
     "bio": "Core developer maintaining DT/kernel work, PenguinOS, Paranoid Android, and core system builds for SKY."
   },
 
@@ -121,6 +124,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     "avatarUrl": "/admins/TopexGuy/pfp.jpg",
     "githubUrl": "https://github.com/TopexGuy",
     "telegramUrl": "https://t.me/theToplexy",
+    "portfolioUrl": "https://github.com/TopexGuy",
     "bio": "Developer & Maintainer contributing development work to MGLRU, OSS Kernel, PixelOS, VoltageOS, and iode."
   },
   {
@@ -132,6 +136,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     "avatarUrl": "/admins/kAiF_00z/pfp.jpg",
     "githubUrl": "https://github.com/kAiF_00z",
     "telegramUrl": "https://t.me/kAiF_00z",
+    "portfolioUrl": "https://github.com/kAiF_00z",
     "bio": "Developer & Maintainer for SKY project ecosystem, Project Infinity X, and ASCP."
   },
   {
@@ -143,6 +148,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     "avatarUrl": "/admins/Sachit/pfp.jpg",
     "githubUrl": "https://github.com/sachit1751-art",
     "telegramUrl": "https://t.me/someone3_124",
+    "portfolioUrl": "https://github.com/sachit1751-art",
     "bio": "Developer who built the SKY website and digital platform, application architecture, UI components, and animations."
   },
   {

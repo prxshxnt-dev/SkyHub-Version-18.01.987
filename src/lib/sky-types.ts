@@ -7,6 +7,9 @@ export interface TeamMember {
   avatarUrl?: string;
   githubUrl?: string;
   telegramUrl?: string;
+  portfolioUrl?: string;
+  websiteUrl?: string;
+  order?: number;
   bio?: string;
 }
 
