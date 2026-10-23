@@ -842,24 +842,37 @@ export default function DashboardPage() {
             {menuItems.map((item) => (
               <motion.button
                 key={item.id}
-                whileHover={{ x: 4, backgroundColor: "rgba(var(--primary), 0.1)" }}
+                whileHover={{ x: 4 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setActiveTab(item.id)}
                 className={cn(
-                  "flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black text-[10px] uppercase border text-left min-w-max lg:w-full snap-start",
+                  "relative flex items-center gap-3 px-5 py-4 rounded-2xl transition-colors font-black text-[10px] uppercase border text-left min-w-max lg:w-full snap-start overflow-hidden",
                   activeTab === item.id 
-                    ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20" 
+                    ? "text-primary-foreground border-primary shadow-lg shadow-primary/20" 
                     : "bg-transparent text-muted-foreground border-transparent hover:border-border/50 hover:text-foreground"
                 )}
               >
+                {activeTab === item.id && (
+                  <motion.div
+                    layoutId="activeTabBadge"
+                    className="absolute inset-0 bg-primary z-0 rounded-2xl"
+                    transition={{ type: "spring", stiffness: 420, damping: 35 }}
+                  />
+                )}
                 <div className={cn(
-                  "w-8 h-8 rounded-xl flex items-center justify-center transition-colors shrink-0",
+                  "relative z-10 w-8 h-8 rounded-xl flex items-center justify-center transition-colors shrink-0",
                   activeTab === item.id ? "bg-white/20" : "bg-muted"
                 )}>
                   {item.icon}
                 </div>
-                <span className="flex-1 uppercase tracking-widest whitespace-nowrap">{item.label}</span>
-                {activeTab === item.id && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_10px_#fff] animate-pulse shrink-0" />}
+                <span className="relative z-10 flex-1 uppercase tracking-widest whitespace-nowrap">{item.label}</span>
+                {activeTab === item.id && (
+                  <motion.div 
+                    layoutId="activeTabGlow"
+                    className="relative z-10 w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_10px_#fff] shrink-0" 
+                    transition={{ type: "spring", stiffness: 420, damping: 35 }}
+                  />
+                )}
               </motion.button>
             ))}
             <div className="min-w-[1rem] lg:hidden" /> {/* Right spacer for mobile */}
@@ -875,13 +888,20 @@ export default function DashboardPage() {
           </div>
         </aside>
 
-        {/* Main Workspace Area */}
-        <motion.div 
-          layout 
-          transition={{ duration: 0.4 }} 
+        {/* Main Workspace Area with Framer Motion Transitions */}
+        <div 
           className="flex-1 w-full bg-card/20 backdrop-blur-md rounded-3xl lg:rounded-[3rem] p-6 lg:p-12 min-h-[700px] lg:max-h-[calc(100vh-160px)] border border-border/50 shadow-2xl relative overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent"
         >
-          {activeTab === 'profile' ? (
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 16, filter: 'blur(4px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -16, filter: 'blur(4px)' }}
+              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full"
+            >
+              {activeTab === 'profile' ? (
             <div className="space-y-10 w-full">
               <div className="flex items-center gap-4"><UserCircle className="w-8 h-8 text-primary" /><h2 className="text-3xl font-black uppercase">My Profile</h2></div>
               <Card className="p-8 rounded-[2.5rem] bg-muted/30 border-border space-y-6">
@@ -1845,7 +1865,9 @@ export default function DashboardPage() {
               )}
             </div>
           )}
-        </motion.div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
 
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>

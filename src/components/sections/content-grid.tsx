@@ -831,21 +831,109 @@ function RecoveryCard({ recovery }: { recovery: any }) {
   const db = useFirestore();
   const { auth } = initializeFirebase();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [currentThumbnail, setCurrentThumbnail] = useState<string>(recovery.imageUrl || '');
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setCurrentThumbnail(recovery.imageUrl || '');
+  }, [recovery.imageUrl]);
+
+  const handleThumbnailFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsCompressing(true);
+    try {
+      const compressedDataUrl = await compressImage(file, 1200, 750, 0.85);
+      setCurrentThumbnail(compressedDataUrl);
+      toast({
+        title: "Thumbnail Compressed",
+        description: "Ready to save to custom recovery registry.",
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Image Processing Failed",
+        description: err.message || "Failed to compress thumbnail.",
+      });
+    } finally {
+      setIsCompressing(false);
+    }
+  };
+
+  const handleSaveThumbnail = async () => {
+    if (!db) {
+      toast({ variant: "destructive", title: "Database unavailable" });
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const docRef = doc(db, 'recoveries', recovery.id);
+      await updateDoc(docRef, {
+        imageUrl: currentThumbnail || null,
+        updatedAt: serverTimestamp(),
+      });
+      toast({
+        title: "Recovery Thumbnail Saved",
+        description: "The custom recovery visual signature was updated successfully.",
+      });
+      setIsUploadModalOpen(false);
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Failed to Update",
+        description: err.message || "Could not update recovery document.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <motion.div variants={cardVariants} whileHover={{ y: -5 }}>
-      <Card className="glass border-border p-0 rounded-[3rem] overflow-hidden flex flex-col h-full transition-all">
+      <Card className="glass border-border p-0 rounded-[3rem] overflow-hidden flex flex-col h-full transition-all group relative">
         <div className="p-6">
-          <div className="relative aspect-video w-full bg-muted/20 flex items-center justify-center rounded-[2.5rem] overflow-hidden border border-border/10 p-10 text-center">
+          <div className="relative aspect-video w-full bg-muted/20 flex items-center justify-center rounded-[2.5rem] overflow-hidden border border-border/10 p-4 text-center">
             {recovery.imageUrl ? (
-              <img src={recovery.imageUrl} alt={recovery.name} className="max-w-full max-h-full object-contain drop-shadow-2xl" />
+              <img 
+                src={recovery.imageUrl} 
+                alt={recovery.name} 
+                className="max-w-full max-h-full object-contain drop-shadow-2xl transition-transform duration-300 group-hover:scale-105" 
+              />
             ) : (
               <div className="flex flex-col items-center gap-3">
                 <ShieldAlert className="w-8 h-8 text-muted-foreground/30" />
                 <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 leading-tight">
                   No visual preview available
                 </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setIsUploadModalOpen(true)}
+                  className="mt-1 text-[10px] font-black uppercase tracking-wider bg-[#FDE694] text-[#121212] hover:bg-[#fbdc70] gap-1.5 rounded-full px-4 h-8 cursor-pointer shadow-xs"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Upload Thumbnail</span>
+                </Button>
               </div>
             )}
+
+            {/* Quick Upload Button on Card */}
+            <div className="absolute top-4 right-4 z-20">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsUploadModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 hover:bg-[#FDE694] hover:text-[#121212] text-white border border-white/20 text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-md transition-all duration-200 active:scale-95 cursor-pointer"
+                title="Upload Recovery Thumbnail"
+              >
+                <Upload className="w-3 h-3" />
+                <span>Upload Thumbnail</span>
+              </button>
+            </div>
           </div>
         </div>
         <div className="px-8 pb-8 flex flex-col flex-1">
@@ -864,6 +952,90 @@ function RecoveryCard({ recovery }: { recovery: any }) {
           </div>
         </div>
       </Card>
+
+      {/* Recovery Thumbnail Upload Modal */}
+      <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-card border-border p-6 sm:p-8">
+          <DialogHeader>
+            <div className="flex items-center gap-2 mb-1">
+              <Badge className="bg-[#FDE694] text-[#121212] font-black uppercase text-[9px]">Custom Recovery</Badge>
+              <span className="text-xs text-muted-foreground font-mono">{recovery.name}</span>
+            </div>
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">
+              Upload Recovery Thumbnail
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-5 mt-4">
+            <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-muted/40 border border-border flex items-center justify-center p-4">
+              {currentThumbnail ? (
+                <img src={currentThumbnail} alt="Recovery thumbnail preview" className="max-w-full max-h-full object-contain" />
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <ImageIcon className="w-8 h-8 opacity-40" />
+                  <p className="text-xs font-semibold">No thumbnail preview loaded</p>
+                </div>
+              )}
+              {currentThumbnail && (
+                <button
+                  type="button"
+                  onClick={() => setCurrentThumbnail('')}
+                  className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-red-600 transition-colors cursor-pointer"
+                  title="Clear thumbnail"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <label className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-2xl border-2 border-dashed border-[#FDE694] dark:border-[#FDE694]/50 bg-[#FDE694]/15 hover:bg-[#FDE694]/25 text-[#121212] dark:text-[#FDE694] text-xs font-black uppercase tracking-wider cursor-pointer transition-colors">
+                {isCompressing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                <span>{isCompressing ? "Compressing Image..." : "Upload Thumbnail File"}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={isCompressing}
+                  onChange={handleThumbnailFile}
+                  className="hidden"
+                />
+              </label>
+
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-black uppercase text-muted-foreground block">
+                  Or Direct Image Link:
+                </span>
+                <Input
+                  value={currentThumbnail.startsWith('data:') ? '' : currentThumbnail}
+                  onChange={(e) => setCurrentThumbnail(e.target.value)}
+                  placeholder="https://.../recovery-banner.png"
+                  className="text-xs font-mono h-11 rounded-xl bg-muted"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t border-border/50">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsUploadModalOpen(false)}
+                className="flex-1 rounded-2xl uppercase text-[10px] font-black tracking-wider h-11"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveThumbnail}
+                disabled={isSaving || isCompressing}
+                className="flex-1 rounded-2xl bg-[#FDE694] text-[#121212] hover:bg-[#fbdc70] font-black uppercase text-[10px] tracking-wider h-11 cursor-pointer"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4 mr-1.5" />}
+                <span>Save to Registry</span>
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }
