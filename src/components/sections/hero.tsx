@@ -99,7 +99,7 @@ export function Hero() {
 
         {/* Brand Name Headline */}
         <ScrollReveal delayMs={100} distance={20}>
-          <h1 className="text-7xl xs:text-8xl sm:text-9xl md:text-[140px] font-black tracking-tighter text-[#1C1B17] dark:text-[#F4EFE6] leading-none mb-3 selection:bg-[#FDE694] transition-colors duration-300">
+          <h1 className="text-7xl xs:text-8xl sm:text-9xl md:text-[140px] font-black tracking-normal sm:tracking-[0.03em] md:tracking-[0.05em] text-[#1C1B17] dark:text-[#F4EFE6] leading-none mb-3 selection:bg-[#FDE694] transition-colors duration-300">
             {displayTitle}
           </h1>
         </ScrollReveal>

@@ -114,6 +114,7 @@ import SuperAdminPanel from '@/components/admin/SuperAdminPanel';
 import BackupExporter from '@/components/admin/BackupExporter';
 import { ShowcaseManager } from '@/components/admin/ShowcaseManager';
 import { CreditsManager } from '@/components/admin/CreditsManager';
+import { compressImage } from '@/lib/image-upload';
 
 const HARDCODED_SUPERADMIN = 'meinkxun@gmail.com';
 const HUB_OWNERS = [HARDCODED_SUPERADMIN, 'skyhubowner@gmail.com'];
@@ -237,6 +238,17 @@ export default function DashboardPage() {
   const [isSavingLayout, setIsSavingLayout] = useState(false);
   const [faviconFile, setFaviconFile] = useState<File | null>(null);
   const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
+
+  // ROM Images upload states (Add & Edit dialogs)
+  const [addRomThumbnail, setAddRomThumbnail] = useState<string>('');
+  const [addRomScreenshots, setAddRomScreenshots] = useState<string[]>([]);
+  const [isUploadingAddThumb, setIsUploadingAddThumb] = useState(false);
+  const [isUploadingAddScreens, setIsUploadingAddScreens] = useState(false);
+
+  const [editRomThumbnail, setEditRomThumbnail] = useState<string>('');
+  const [editRomScreenshots, setEditRomScreenshots] = useState<string[]>([]);
+  const [isUploadingEditThumb, setIsUploadingEditThumb] = useState(false);
+  const [isUploadingEditScreens, setIsUploadingEditScreens] = useState(false);
 
   const { user: currentUser } = useUser();
   const auth = useAuth();
@@ -750,6 +762,12 @@ export default function DashboardPage() {
           data[key] = value;
         }
       });
+      if (editRomThumbnail) {
+        data.imageUrl = editRomThumbnail;
+      }
+      if (editRomScreenshots && editRomScreenshots.length > 0) {
+        data.screenshots = editRomScreenshots;
+      }
       await setDoc(docRef, data, { merge: true });
       setIsEditDialogOpen(false);
       setEditingItem(null);
@@ -1759,7 +1777,11 @@ export default function DashboardPage() {
                   <Button variant="outline" onClick={() => setIsBulkDialogOpen(true)} className="h-12 rounded-2xl border-primary/20 text-primary hover:bg-primary/5 uppercase font-black text-[10px] tracking-widest px-6">
                     <CloudLightning className="w-4 h-4 mr-2" /> Bulk Sync
                   </Button>
-                  <Button onClick={() => setIsAddDialogOpen(true)} className="h-12 rounded-2xl bg-primary text-white font-black uppercase text-[10px] tracking-widest px-6 shadow-lg shadow-primary/20">
+                  <Button onClick={() => {
+                    setAddRomThumbnail('');
+                    setAddRomScreenshots([]);
+                    setIsAddDialogOpen(true);
+                  }} className="h-12 rounded-2xl bg-primary text-white font-black uppercase text-[10px] tracking-widest px-6 shadow-lg shadow-primary/20">
                     <Plus className="w-4 h-4 mr-2" /> Add Protocol
                   </Button>
                 </div>
@@ -1803,7 +1825,12 @@ export default function DashboardPage() {
                             Ref: {item.id.substring(0, 8)}
                           </span>
                           <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => { setEditingItem(item); setIsEditDialogOpen(true); }} className="w-10 h-10 text-primary hover:bg-primary/10 rounded-xl transition-all">
+                            <Button variant="ghost" size="icon" onClick={() => {
+                              setEditingItem(item);
+                              setEditRomThumbnail(item.imageUrl || '');
+                              setEditRomScreenshots(Array.isArray(item.screenshots) ? item.screenshots : []);
+                              setIsEditDialogOpen(true);
+                            }} className="w-10 h-10 text-primary hover:bg-primary/10 rounded-xl transition-all">
                               <Pencil className="w-4 h-4" />
                             </Button>
                             <Button variant="ghost" size="icon" onClick={() => handleDelete(activeTab === 'guides' ? 'tutorials' : activeTab === 'root' ? 'root-packages' : activeTab, item.id)} className="w-10 h-10 text-red-600 hover:bg-red-600/10 rounded-xl transition-all">
@@ -1842,6 +1869,13 @@ export default function DashboardPage() {
                   data[key] = value;
                 }
               });
+              if (addRomThumbnail) {
+                data.imageUrl = addRomThumbnail;
+              }
+              if (addRomScreenshots.length > 0) {
+                const manual = Array.isArray(data.screenshots) ? data.screenshots : [];
+                data.screenshots = Array.from(new Set([...addRomScreenshots, ...manual]));
+              }
               await setDoc(newDocRef, data);
               setIsAddDialogOpen(false);
               toast({ title: "Resource Added", description: "The registry has been updated." });
@@ -1893,8 +1927,46 @@ export default function DashboardPage() {
               )}
 
               <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase ml-1">Visual Preview URL</Label>
-                <Input name="imageUrl" placeholder="HTTPS Asset Link" className="bg-muted rounded-xl h-12" />
+                <div className="flex items-center justify-between">
+                  <Label className="text-[9px] font-black uppercase ml-1">Visual Preview / Thumbnail</Label>
+                  <label className="cursor-pointer text-[8px] font-black uppercase text-primary hover:underline flex items-center gap-1">
+                    {isUploadingAddThumb ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                    <span>Upload Thumbnail</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setIsUploadingAddThumb(true);
+                        try {
+                          const compressed = await compressImage(file, 1200, 750, 0.85);
+                          setAddRomThumbnail(compressed);
+                          toast({ title: "Thumbnail compressed & ready" });
+                        } catch (err) {
+                          toast({ variant: "destructive", title: "Upload failed" });
+                        } finally {
+                          setIsUploadingAddThumb(false);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+                {addRomThumbnail ? (
+                  <div className="relative rounded-2xl overflow-hidden border border-border group h-24 bg-black/20">
+                    <img src={addRomThumbnail} alt="Thumbnail preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setAddRomThumbnail('')}
+                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-600 text-white opacity-80 hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <Input name="imageUrl" placeholder="HTTPS Asset Link or click Upload Thumbnail" className="bg-muted rounded-xl h-12" />
+                )}
               </div>
 
               {(activeTab === 'roms' || activeTab === 'wallpapers' || activeTab === 'live-wallpapers' || activeTab === 'recoveries') && (
@@ -1911,9 +1983,63 @@ export default function DashboardPage() {
             </div>
 
             {(activeTab === 'roms' || activeTab === 'recoveries') && (
-              <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase ml-1">System Screenshots (One URL per line)</Label>
-                <Textarea name="screenshots" placeholder="Mirror URL 1\nMirror URL 2" className="bg-muted min-h-[100px] rounded-2xl" />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[9px] font-black uppercase ml-1">
+                    System Screenshots ({addRomScreenshots.length})
+                  </Label>
+                  <label className="cursor-pointer text-[8px] font-black uppercase text-primary hover:underline flex items-center gap-1">
+                    {isUploadingAddScreens ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                    <span>Upload Screenshots</span>
+                    <input 
+                      type="file" 
+                      multiple 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={async (e) => {
+                        const files = Array.from(e.target.files || []);
+                        if (!files.length) return;
+                        setIsUploadingAddScreens(true);
+                        try {
+                          const compressedList: string[] = [];
+                          for (const f of files) {
+                            const res = await compressImage(f, 1080, 1920, 0.85);
+                            compressedList.push(res);
+                          }
+                          setAddRomScreenshots(prev => [...prev, ...compressedList]);
+                          toast({ title: `Uploaded & compressed ${files.length} screenshot(s)` });
+                        } catch (err) {
+                          toast({ variant: "destructive", title: "Upload failed" });
+                        } finally {
+                          setIsUploadingAddScreens(false);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+
+                {addRomScreenshots.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                    {addRomScreenshots.map((url, i) => (
+                      <div key={i} className="relative w-20 h-32 rounded-xl overflow-hidden border border-border shrink-0 bg-black/20 group">
+                        <img src={url} alt={`Screenshot ${i+1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setAddRomScreenshots(prev => prev.filter((_, idx) => idx !== i))}
+                          className="absolute top-1 right-1 p-1 rounded-md bg-red-600 text-white opacity-80 hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <Textarea 
+                  name="screenshots" 
+                  placeholder="Or paste external screenshot URLs (One per line)" 
+                  className="bg-muted min-h-[70px] rounded-2xl text-[11px]" 
+                />
               </div>
             )}
 
@@ -2167,8 +2293,52 @@ export default function DashboardPage() {
               )}
 
               <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase ml-1">Visual Preview URL</Label>
-                <Input name="imageUrl" defaultValue={editingItem?.imageUrl} placeholder="HTTPS Asset Link" className="bg-muted rounded-xl h-12" />
+                <div className="flex items-center justify-between">
+                  <Label className="text-[9px] font-black uppercase ml-1">Visual Preview / Thumbnail</Label>
+                  <label className="cursor-pointer text-[8px] font-black uppercase text-primary hover:underline flex items-center gap-1">
+                    {isUploadingEditThumb ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                    <span>Upload Thumbnail</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setIsUploadingEditThumb(true);
+                        try {
+                          const compressed = await compressImage(file, 1200, 750, 0.85);
+                          setEditRomThumbnail(compressed);
+                          toast({ title: "Thumbnail updated" });
+                        } catch (err) {
+                          toast({ variant: "destructive", title: "Upload failed" });
+                        } finally {
+                          setIsUploadingEditThumb(false);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+                {editRomThumbnail ? (
+                  <div className="relative rounded-2xl overflow-hidden border border-border group h-24 bg-black/20">
+                    <img src={editRomThumbnail} alt="Thumbnail preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setEditRomThumbnail('')}
+                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-600 text-white opacity-80 hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <Input 
+                    name="imageUrl" 
+                    defaultValue={editingItem?.imageUrl} 
+                    onChange={(e) => setEditRomThumbnail(e.target.value)}
+                    placeholder="HTTPS Asset Link or click Upload Thumbnail" 
+                    className="bg-muted rounded-xl h-12" 
+                  />
+                )}
               </div>
 
               {(activeTab === 'roms' || activeTab === 'wallpapers' || activeTab === 'live-wallpapers' || activeTab === 'recoveries') && (
@@ -2185,9 +2355,68 @@ export default function DashboardPage() {
             </div>
 
             {(activeTab === 'roms' || activeTab === 'recoveries') && (
-              <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase ml-1">System Screenshots (One URL per line)</Label>
-                <Textarea name="screenshots" defaultValue={editingItem?.screenshots?.join('\n')} placeholder="Mirror URL 1\nMirror URL 2" className="bg-muted min-h-[100px] rounded-2xl" />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[9px] font-black uppercase ml-1">
+                    System Screenshots ({editRomScreenshots.length})
+                  </Label>
+                  <label className="cursor-pointer text-[8px] font-black uppercase text-primary hover:underline flex items-center gap-1">
+                    {isUploadingEditScreens ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                    <span>Upload Screenshots</span>
+                    <input 
+                      type="file" 
+                      multiple 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={async (e) => {
+                        const files = Array.from(e.target.files || []);
+                        if (!files.length) return;
+                        setIsUploadingEditScreens(true);
+                        try {
+                          const compressedList: string[] = [];
+                          for (const f of files) {
+                            const res = await compressImage(f, 1080, 1920, 0.85);
+                            compressedList.push(res);
+                          }
+                          setEditRomScreenshots(prev => [...prev, ...compressedList]);
+                          toast({ title: `Uploaded & compressed ${files.length} screenshot(s)` });
+                        } catch (err) {
+                          toast({ variant: "destructive", title: "Upload failed" });
+                        } finally {
+                          setIsUploadingEditScreens(false);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+
+                {editRomScreenshots.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                    {editRomScreenshots.map((url, i) => (
+                      <div key={i} className="relative w-20 h-32 rounded-xl overflow-hidden border border-border shrink-0 bg-black/20 group">
+                        <img src={url} alt={`Screenshot ${i+1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setEditRomScreenshots(prev => prev.filter((_, idx) => idx !== i))}
+                          className="absolute top-1 right-1 p-1 rounded-md bg-red-600 text-white opacity-80 hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <Textarea 
+                  name="screenshots" 
+                  defaultValue={editRomScreenshots.join('\n')} 
+                  onChange={(e) => {
+                    const lines = e.target.value.split('\n').filter(Boolean);
+                    setEditRomScreenshots(lines);
+                  }}
+                  placeholder="Or paste external screenshot URLs (One per line)" 
+                  className="bg-muted min-h-[70px] rounded-2xl text-[11px]" 
+                />
               </div>
             )}
 

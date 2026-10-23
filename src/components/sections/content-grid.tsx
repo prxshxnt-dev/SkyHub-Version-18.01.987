@@ -37,7 +37,12 @@ import {
   ChevronUp,
   Link as LinkIcon,
   Camera,
-  Layers
+  Layers,
+  Upload,
+  Trash2,
+  Plus,
+  Check,
+  Image as ImageIcon
 } from 'lucide-react';
 import {
   Accordion,
@@ -54,13 +59,14 @@ import {
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import Link from 'next/link';
 import { toast } from '@/hooks/use-toast';
-import { useCollection, useMemoFirebase, useFirestore, useDoc } from '@/firebase';
+import { useCollection, useMemoFirebase, useFirestore, useDoc, useUser } from '@/firebase';
 import { useSearch } from '@/context/SearchContext';
-import { collection, doc, increment, updateDoc } from 'firebase/firestore';
+import { collection, doc, increment, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { logActivity } from '@/lib/activity-logger';
 import { initializeFirebase } from '@/firebase';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { SiteSettings } from '@/lib/store';
+import { compressImage } from '@/lib/image-upload';
 
 import { cn } from '@/lib/utils';
 
@@ -176,20 +182,31 @@ const LoadingState = ({ label }: { label: string }) => (
 export function ROMCard({ rom }: { rom: any }) {
   const db = useFirestore();
   const { auth } = initializeFirebase();
+  const { user } = useUser();
+  const isSuperAdmin = user?.email?.toLowerCase().trim() === 'meinkxun@gmail.com' || user?.email?.toLowerCase().trim() === 'skyhubowner@gmail.com';
+
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  
+
+  // Upload modal states
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
+  const [activeMediaTab, setActiveMediaTab] = useState<'thumbnail' | 'screenshots'>('thumbnail');
+  const [currentThumbnail, setCurrentThumbnail] = useState(rom.imageUrl || '');
+  const [currentScreenshots, setCurrentScreenshots] = useState<string[]>(Array.isArray(rom.screenshots) ? rom.screenshots : []);
+  const [newScreenshotUrl, setNewScreenshotUrl] = useState('');
+  const [isCompressingThumbnail, setIsCompressingThumbnail] = useState(false);
+  const [isCompressingScreenshots, setIsCompressingScreenshots] = useState(false);
+  const [isSavingMedia, setIsSavingMedia] = useState(false);
+
+  useEffect(() => {
+    setCurrentThumbnail(rom.imageUrl || '');
+    setCurrentScreenshots(Array.isArray(rom.screenshots) ? rom.screenshots : []);
+  }, [rom.imageUrl, rom.screenshots]);
+
   const screenshots = Array.isArray(rom.screenshots) ? rom.screenshots : [];
   const hasScreenshots = screenshots.length > 0;
   const currentIndex = selectedImage ? screenshots.indexOf(selectedImage) : -1;
-
-  const handleOpenGallery = () => {
-    if (hasScreenshots) {
-      setSelectedImage(screenshots[0]);
-      setIsPreviewOpen(true);
-    }
-  };
 
   const handleNext = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -204,6 +221,136 @@ export function ROMCard({ rom }: { rom: any }) {
     if (hasScreenshots) {
       const prevIdx = (currentIndex - 1 + screenshots.length) % screenshots.length;
       setSelectedImage(screenshots[prevIdx]);
+    }
+  };
+
+  const handleThumbnailFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsCompressingThumbnail(true);
+    try {
+      const compressed = await compressImage(file, 1200, 750, 0.85);
+      setCurrentThumbnail(compressed);
+      toast({
+        title: "Thumbnail Compressed",
+        description: `${file.name} ready. Click "Save Thumbnail" to apply.`,
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Upload Error",
+        description: err.message || "Failed to process thumbnail.",
+      });
+    } finally {
+      setIsCompressingThumbnail(false);
+    }
+  };
+
+  const handleScreenshotsFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsCompressingScreenshots(true);
+    try {
+      const newImages: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const compressed = await compressImage(file, 1080, 1920, 0.85);
+        newImages.push(compressed);
+      }
+      setCurrentScreenshots(prev => [...prev, ...newImages]);
+      toast({
+        title: "Screenshots Compressed",
+        description: `Added ${newImages.length} screenshot(s). Click "Save Screenshots" to apply.`,
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Upload Error",
+        description: err.message || "Failed to process screenshots.",
+      });
+    } finally {
+      setIsCompressingScreenshots(false);
+    }
+  };
+
+  const handleAddScreenshotFromUrl = () => {
+    if (!newScreenshotUrl.trim()) return;
+    setCurrentScreenshots(prev => [...prev, newScreenshotUrl.trim()]);
+    setNewScreenshotUrl('');
+  };
+
+  const handleRemoveScreenshot = (idx: number) => {
+    setCurrentScreenshots(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSaveThumbnail = async () => {
+    if (!db || !rom?.id) return;
+    setIsSavingMedia(true);
+    try {
+      await updateDoc(doc(db, 'roms', rom.id), {
+        imageUrl: currentThumbnail.trim(),
+        updatedAt: serverTimestamp(),
+      });
+      toast({
+        title: "ROM Thumbnail Saved",
+        description: `Thumbnail for "${rom.name}" has been updated.`,
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: err.message || "Could not save thumbnail.",
+      });
+    } finally {
+      setIsSavingMedia(false);
+    }
+  };
+
+  const handleSaveScreenshots = async () => {
+    if (!db || !rom?.id) return;
+    setIsSavingMedia(true);
+    try {
+      await updateDoc(doc(db, 'roms', rom.id), {
+        screenshots: currentScreenshots,
+        updatedAt: serverTimestamp(),
+      });
+      toast({
+        title: "ROM Screenshots Saved",
+        description: `${currentScreenshots.length} screenshot(s) saved for "${rom.name}".`,
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: err.message || "Could not save screenshots.",
+      });
+    } finally {
+      setIsSavingMedia(false);
+    }
+  };
+
+  const handleSaveAllMedia = async () => {
+    if (!db || !rom?.id) return;
+    setIsSavingMedia(true);
+    try {
+      await updateDoc(doc(db, 'roms', rom.id), {
+        imageUrl: currentThumbnail.trim(),
+        screenshots: currentScreenshots,
+        updatedAt: serverTimestamp(),
+      });
+      toast({
+        title: "ROM Media Updated",
+        description: `Thumbnail and screenshots for "${rom.name}" saved!`,
+      });
+      setIsMediaModalOpen(false);
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: err.message || "Could not update ROM media.",
+      });
+    } finally {
+      setIsSavingMedia(false);
     }
   };
 
@@ -228,8 +375,34 @@ export function ROMCard({ rom }: { rom: any }) {
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 leading-tight">
                 Sorry for the inconveniences,<br />image will be added soon
               </p>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsMediaModalOpen(true)}
+                className="mt-2 text-[10px] font-black uppercase tracking-wider bg-[#FDE694] text-[#121212] hover:bg-[#fbdc70] gap-1.5 rounded-full px-4 h-8 cursor-pointer shadow-xs"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Upload ROM Images</span>
+              </Button>
             </div>
           )}
+
+          {/* Quick Upload Images Button on Card */}
+          <div className="absolute top-4 right-4 z-20">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMediaModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 hover:bg-[#FDE694] hover:text-[#121212] text-white border border-white/20 text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-md transition-all duration-200 active:scale-95 cursor-pointer"
+              title="Upload ROM Thumbnail & Screenshots"
+            >
+              <Upload className="w-3 h-3" />
+              <span>Upload Images</span>
+            </button>
+          </div>
+
           <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
              <div className="flex gap-2">
                 <Badge variant="outline" className="text-[9px] font-black bg-black/40 backdrop-blur-sm border-white/10 uppercase tracking-widest text-white px-3 py-1 rounded-full">
@@ -243,7 +416,9 @@ export function ROMCard({ rom }: { rom: any }) {
         </div>
         
         <div className="p-8 flex flex-col flex-1">
-          <h3 className="text-2xl font-black uppercase mb-4 tracking-tight text-foreground">{rom.name}</h3>
+          <div className="flex items-start justify-between gap-2 mb-4">
+            <h3 className="text-2xl font-black uppercase tracking-tight text-foreground truncate">{rom.name}</h3>
+          </div>
           
           <div className={cn(
             "text-sm text-foreground/70 transition-all duration-300 whitespace-pre-wrap leading-relaxed flex-1", 
@@ -251,63 +426,300 @@ export function ROMCard({ rom }: { rom: any }) {
           )}>
             {parseLinks(rom.description)}
           </div>
-            <AnimatePresence>
-              {isExpanded && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-8 pt-8 border-t border-white/10 space-y-8">
-                  {hasScreenshots && (
-                    <div className="space-y-4">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-primary/80">System Screenshots</p>
-                      <ScrollArea className="w-full whitespace-nowrap rounded-3xl border border-white/10 bg-black/20 p-6">
-                        <div className="flex gap-4">
-                          {screenshots?.map((src: string, idx: number) => (
-                            <div key={idx} className="relative w-56 aspect-[9/16] shrink-0 rounded-3xl overflow-hidden border border-white/10 cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => { setSelectedImage(src); setIsPreviewOpen(true); }}>
-                              <img src={src} className="w-full h-full object-cover" alt="SC" />
-                            </div>
-                          ))}
-                        </div>
-                        <ScrollBar orientation="horizontal" />
-                      </ScrollArea>
+          
+          <AnimatePresence>
+            {isExpanded && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-8 pt-8 border-t border-white/10 space-y-8">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-primary/80">System Screenshots</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMediaTab('screenshots');
+                        setIsMediaModalOpen(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-[#FDE694] bg-[#FDE694]/20 hover:bg-[#FDE694] hover:text-[#121212] transition-colors cursor-pointer"
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>Upload Screenshots</span>
+                    </button>
+                  </div>
+                  
+                  {hasScreenshots ? (
+                    <ScrollArea className="w-full whitespace-nowrap rounded-3xl border border-white/10 bg-black/20 p-6">
+                      <div className="flex gap-4">
+                        {screenshots?.map((src: string, idx: number) => (
+                          <div key={idx} className="relative w-56 aspect-[9/16] shrink-0 rounded-3xl overflow-hidden border border-white/10 cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => { setSelectedImage(src); setIsPreviewOpen(true); }}>
+                            <img src={src} className="w-full h-full object-cover" alt="SC" />
+                          </div>
+                        ))}
+                      </div>
+                      <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                  ) : (
+                    <div className="p-6 rounded-3xl border border-dashed border-[#EBE4CF] dark:border-[#36342A] bg-black/5 dark:bg-white/5 text-center flex flex-col items-center gap-2">
+                      <Camera className="w-6 h-6 text-muted-foreground/40" />
+                      <p className="text-xs text-muted-foreground">No screenshots added yet.</p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => {
+                          setActiveMediaTab('screenshots');
+                          setIsMediaModalOpen(true);
+                        }}
+                        className="text-xs font-bold bg-[#FDE694] text-[#121212] hover:bg-[#fbdc70] rounded-xl gap-1.5 cursor-pointer"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload Screenshots</span>
+                      </Button>
                     </div>
                   )}
-                  <div className="grid grid-cols-1 gap-2">
-                    <Button variant="outline" onClick={() => initiateDownload(db, auth, 'roms', rom.id, rom.downloadUrl, rom.name)} className="w-full h-12 justify-start px-6 rounded-2xl border-white/10 bg-white/5 text-[10px] font-black uppercase gap-4 hover:bg-white/10">
-                      <LinkIcon className="w-4 h-4" /> Primary Acquisition Protocol
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                </div>
 
-           <div className="mt-auto space-y-3">
-             <Button 
-                variant="outline" 
-                onClick={() => setIsExpanded(!isExpanded)} 
-                className="w-full h-10 rounded-full border border-border bg-background/50 text-[10px] uppercase font-bold tracking-widest hover:bg-muted"
-             >
-               {isExpanded ? 'Show Less' : 'Read Details'}
-             </Button>
-             <Button 
-                onClick={() => initiateDownload(db, auth, 'roms', rom.id, rom.downloadUrl, rom.name)} 
-                className="w-full h-12 rounded-full bg-primary text-primary-foreground font-black uppercase text-[11px] tracking-widest shadow-md hover:scale-[1.02] active:scale-[0.98] transition-transform"
-             >
-               Download ROM
-             </Button>
-          </div>
+                <div className="grid grid-cols-1 gap-2">
+                  <Button variant="outline" onClick={() => initiateDownload(db, auth, 'roms', rom.id, rom.downloadUrl, rom.name)} className="w-full h-12 justify-start px-6 rounded-2xl border-white/10 bg-white/5 text-[10px] font-black uppercase gap-4 hover:bg-white/10">
+                    <LinkIcon className="w-4 h-4" /> Primary Acquisition Protocol
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div className="mt-auto space-y-3 p-8 pt-0">
+          <Button 
+            variant="outline" 
+            onClick={() => setIsExpanded(!isExpanded)} 
+            className="w-full h-10 rounded-full border border-border bg-background/50 text-[10px] uppercase font-bold tracking-widest hover:bg-muted"
+          >
+            {isExpanded ? 'Show Less' : 'Read Details'}
+          </Button>
+          <Button 
+            onClick={() => initiateDownload(db, auth, 'roms', rom.id, rom.downloadUrl, rom.name)} 
+            className="w-full h-12 rounded-full bg-primary text-primary-foreground font-black uppercase text-[11px] tracking-widest shadow-md hover:scale-[1.02] active:scale-[0.98] transition-transform"
+          >
+            Download ROM
+          </Button>
+        </div>
       </Card>
+
+      {/* Full Screen Image Preview Modal */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-          <DialogContent className="max-w-[100vw] w-screen h-screen p-0 border-none bg-black/95 backdrop-blur-3xl overflow-hidden rounded-none shadow-none flex flex-col">
-            <div className="relative flex-1 w-full flex items-center justify-center p-4">
-              <img src={selectedImage || undefined} className="max-w-full max-h-full object-contain rounded-2xl" alt="Preview" />
-              <Button onClick={() => setIsPreviewOpen(false)} className="absolute top-8 right-8 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 z-[60]" variant="ghost" size="icon">
-                <X className="w-6 h-6 text-white" />
+        <DialogContent className="max-w-[100vw] w-screen h-screen p-0 border-none bg-black/95 backdrop-blur-3xl overflow-hidden rounded-none shadow-none flex flex-col">
+          <div className="relative flex-1 w-full flex items-center justify-center p-4">
+            <img src={selectedImage || undefined} className="max-w-full max-h-full object-contain rounded-2xl" alt="Preview" />
+            <Button onClick={() => setIsPreviewOpen(false)} className="absolute top-8 right-8 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 z-[60]" variant="ghost" size="icon">
+              <X className="w-6 h-6 text-white" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ROM Images Upload & Management Modal */}
+      <Dialog open={isMediaModalOpen} onOpenChange={setIsMediaModalOpen}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl bg-card border-border p-6 sm:p-8">
+          <DialogHeader>
+            <div className="flex items-center gap-2 mb-1">
+              <Badge className="bg-[#FDE694] text-[#121212] font-black uppercase text-[9px]">Custom ROM Media</Badge>
+              <span className="text-xs text-muted-foreground font-mono">{rom.name}</span>
+            </div>
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">
+              Upload ROM Images
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-4">
+            {/* Tab switchers */}
+            <div className="flex rounded-2xl bg-muted p-1 gap-1">
+              <button
+                type="button"
+                onClick={() => setActiveMediaTab('thumbnail')}
+                className={cn(
+                  "flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2",
+                  activeMediaTab === 'thumbnail' ? "bg-background text-foreground shadow-xs font-black" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <ImageIcon className="w-3.5 h-3.5" />
+                <span>ROM Thumbnail</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveMediaTab('screenshots')}
+                className={cn(
+                  "flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2",
+                  activeMediaTab === 'screenshots' ? "bg-background text-foreground shadow-xs font-black" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Camera className="w-3.5 h-3.5" />
+                <span>Screenshots ({currentScreenshots.length})</span>
+              </button>
+            </div>
+
+            {/* THUMBNAIL TAB */}
+            {activeMediaTab === 'thumbnail' && (
+              <div className="space-y-4">
+                <div className="relative aspect-[16/10] w-full rounded-2xl overflow-hidden bg-muted/40 border border-border flex items-center justify-center">
+                  {currentThumbnail ? (
+                    <img src={currentThumbnail} alt="Thumbnail preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <ImageIcon className="w-8 h-8 opacity-40" />
+                      <p className="text-xs font-semibold">No thumbnail loaded</p>
+                    </div>
+                  )}
+                  {currentThumbnail && (
+                    <button
+                      type="button"
+                      onClick={() => setCurrentThumbnail('')}
+                      className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-red-600 transition-colors cursor-pointer"
+                      title="Clear thumbnail"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-2xl border-2 border-dashed border-[#FDE694] dark:border-[#FDE694]/50 bg-[#FDE694]/15 hover:bg-[#FDE694]/25 text-[#121212] dark:text-[#FDE694] text-xs font-black uppercase tracking-wider cursor-pointer transition-colors">
+                    {isCompressingThumbnail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    <span>{isCompressingThumbnail ? "Compressing Thumbnail..." : "Upload Thumbnail Image"}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={isCompressingThumbnail}
+                      onChange={handleThumbnailFile}
+                      className="hidden"
+                    />
+                  </label>
+
+                  <div className="pt-2">
+                    <span className="text-[10px] font-black uppercase text-muted-foreground block mb-1">
+                      Or Direct Image URL:
+                    </span>
+                    <Input
+                      value={currentThumbnail}
+                      onChange={(e) => setCurrentThumbnail(e.target.value)}
+                      placeholder="https://... (direct image link)"
+                      className="rounded-xl bg-muted text-xs"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={handleSaveThumbnail}
+                  disabled={isSavingMedia || isCompressingThumbnail}
+                  className="w-full h-12 bg-primary text-primary-foreground font-black uppercase text-xs tracking-wider rounded-2xl gap-2 cursor-pointer"
+                >
+                  {isSavingMedia ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  <span>Save Thumbnail to Registry</span>
+                </Button>
+              </div>
+            )}
+
+            {/* SCREENSHOTS TAB */}
+            {activeMediaTab === 'screenshots' && (
+              <div className="space-y-4">
+                <label className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-2xl border-2 border-dashed border-[#FDE694] dark:border-[#FDE694]/50 bg-[#FDE694]/15 hover:bg-[#FDE694]/25 text-[#121212] dark:text-[#FDE694] text-xs font-black uppercase tracking-wider cursor-pointer transition-colors">
+                  {isCompressingScreenshots ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  <span>{isCompressingScreenshots ? "Compressing Screenshots..." : "Upload Screenshots (Multiple Supported)"}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    disabled={isCompressingScreenshots}
+                    onChange={handleScreenshotsFiles}
+                    className="hidden"
+                  />
+                </label>
+
+                {/* Screenshots Gallery Preview */}
+                <div className="space-y-2">
+                  <span className="text-[10px] font-black uppercase text-muted-foreground block">
+                    Screenshots in Registry ({currentScreenshots.length})
+                  </span>
+                  {currentScreenshots.length > 0 ? (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 max-h-56 overflow-y-auto p-2.5 bg-muted/40 rounded-2xl border border-border">
+                      {currentScreenshots.map((src, sIdx) => (
+                        <div key={sIdx} className="relative aspect-[9/16] rounded-xl overflow-hidden border border-border group bg-black/40">
+                          <img src={src} alt={`Screenshot ${sIdx + 1}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveScreenshot(sIdx)}
+                            className="absolute top-1 right-1 p-1 rounded-full bg-red-600/90 text-white opacity-90 hover:opacity-100 hover:scale-110 transition-all cursor-pointer"
+                            title="Remove screenshot"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-6 rounded-2xl bg-muted/30 border border-dashed border-border text-center text-xs text-muted-foreground">
+                      No screenshots added yet. Click above to upload screenshot image files.
+                    </div>
+                  )}
+                </div>
+
+                {/* Direct URL input */}
+                <div className="flex gap-2">
+                  <Input
+                    value={newScreenshotUrl}
+                    onChange={(e) => setNewScreenshotUrl(e.target.value)}
+                    placeholder="Paste screenshot image URL..."
+                    className="rounded-xl bg-muted text-xs flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleAddScreenshotFromUrl}
+                    disabled={!newScreenshotUrl.trim()}
+                    className="rounded-xl text-xs font-bold gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add</span>
+                  </Button>
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={handleSaveScreenshots}
+                  disabled={isSavingMedia || isCompressingScreenshots}
+                  className="w-full h-12 bg-primary text-primary-foreground font-black uppercase text-xs tracking-wider rounded-2xl gap-2 cursor-pointer"
+                >
+                  {isSavingMedia ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  <span>Save Screenshots to Registry</span>
+                </Button>
+              </div>
+            )}
+
+            {/* Global Save All */}
+            <div className="pt-3 border-t border-border flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsMediaModalOpen(false)}
+                className="rounded-xl text-xs font-bold cursor-pointer"
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveAllMedia}
+                disabled={isSavingMedia || isCompressingThumbnail || isCompressingScreenshots}
+                className="rounded-2xl text-xs font-black uppercase tracking-wider bg-[#FDE694] text-[#121212] hover:bg-[#fbdc70] gap-2 px-6 cursor-pointer"
+              >
+                {isSavingMedia ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                <span>Save All Media</span>
               </Button>
             </div>
-          </DialogContent>
-        </Dialog>
-      </motion.div>
-    );
-  }
+          </div>
+        </DialogContent>
+      </Dialog>
+    </motion.div>
+  );
+}
 
 export function ROMGrid({ roms, isLoading }: { roms: any[], isLoading: boolean }) {
   const { searchQuery } = useSearch();

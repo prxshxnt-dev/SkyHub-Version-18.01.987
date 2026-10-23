@@ -2,8 +2,8 @@
 
 import { useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, where, doc } from 'firebase/firestore';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
-import { useEffect, useState, useRef } from 'react';
+import { motion } from 'motion/react';
+import { useRef } from 'react';
 import { Heart, User, Quote, Sparkles } from 'lucide-react';
 import { SiteSettings } from '@/lib/store';
 import { cn } from '@/lib/utils';
@@ -31,28 +31,28 @@ export function DonorShowcase() {
   const loopedDonors = [...donors, ...donors, ...donors];
 
   return (
-    <section className="relative py-24 overflow-hidden bg-black/40 border-y border-white/5">
+    <section className="relative py-20 sm:py-24 overflow-hidden bg-gradient-to-b from-[#FFFDF7] via-[#FAF5E6] to-[#FAF3DD] dark:from-[#181712] dark:via-[#14130F] dark:to-[#12110D] border-y border-[#EBE4CF] dark:border-[#2C2A22] transition-colors duration-300">
       {showcaseSettings.showParticles && <ParticlesBackground />}
       
       <div className="container mx-auto px-4 mb-12 relative z-10 text-center">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-medium mb-6 uppercase tracking-widest"
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FDE694]/40 dark:bg-[#FDE694]/20 border border-[#FDE694]/60 dark:border-[#FDE694]/40 text-[#1C1B17] dark:text-[#FDE694] text-xs font-black mb-5 uppercase tracking-widest shadow-2xs"
         >
-          <Heart className="w-3 h-3" />
-          Wall of Gratitude
+          <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+          <span>WALL OF GRATITUDE</span>
         </motion.div>
-        <h2 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
-          Our Special <span className="text-primary italic">Donors</span>
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mb-3 tracking-tight uppercase text-[#1C1B17] dark:text-[#F4EFE6]">
+          Our Special <span className="text-amber-600 dark:text-[#FDE694]">Donors</span>
         </h2>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
-          Honoring those who fuel the continuous research and optimization for the Snapdragon ecosystem.
+        <p className="text-xs sm:text-sm text-[#787567] dark:text-[#BDB8A4] max-w-2xl mx-auto leading-relaxed">
+          Honoring the community members and supporters fueling the continuous research, device bringup, and kernel optimization for the SKY ecosystem.
         </p>
       </div>
 
-      <div className="relative flex overflow-hidden py-12">
+      <div className="relative flex overflow-hidden py-6">
         <div 
           className="flex whitespace-nowrap animate-marquee hover:pause-marquee"
           style={{ 
@@ -75,56 +75,61 @@ export function DonorShowcase() {
 
 function DonorCard({ donor, style }: { donor: any, style: string }) {
   const isNeon = style === 'neon';
-  const isGlass = style === 'glassmorphism';
-  const isMinimal = style === 'minimal';
 
   return (
     <motion.div
-      whileHover={{ y: -5, scale: 1.02 }}
+      whileHover={{ y: -4, scale: 1.02 }}
       className={cn(
-        "flex-shrink-0 mx-4 w-72 rounded-2xl p-6 transition-all duration-300 relative group",
-        isGlass && "bg-white/5 backdrop-blur-xl border border-white/10 hover:border-primary/50",
-        isNeon && "bg-black border border-primary/20 hover:border-primary hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.3)]",
-        isMinimal && "bg-transparent border border-white/5 hover:bg-white/5",
-        "flex flex-col items-start gap-4"
+        "flex-shrink-0 mx-3 w-72 rounded-3xl p-5 sm:p-6 transition-all duration-300 relative group flex flex-col items-start gap-3.5 shadow-xs hover:shadow-xl",
+        "bg-gradient-to-b from-[#FFFDF7] to-[#FAF5E6] dark:from-[#1F1E18] dark:to-[#151410] border border-[#EBE4CF] dark:border-[#36342A] hover:border-[#FDE694] dark:hover:border-[#FDE694]/60",
+        isNeon && "hover:shadow-[0_0_25px_rgba(253,230,148,0.25)]"
       )}
     >
-      <div className="flex items-center gap-4 w-full">
-        <div className="relative">
-          <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-primary/20 group-hover:border-primary transition-colors">
+      <div className="flex items-center gap-3.5 w-full">
+        <div className="relative shrink-0">
+          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl overflow-hidden border-2 border-[#EBE4CF] dark:border-[#36342A] group-hover:border-[#FDE694] bg-[#FFF8E1] dark:bg-[#201F18] transition-colors flex items-center justify-center">
             {donor.avatarUrl ? (
-              <img src={donor.avatarUrl} alt={donor.name} className="w-full h-full object-cover" />
+              <img 
+                src={donor.avatarUrl} 
+                alt={donor.name} 
+                className="w-full h-full object-cover" 
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
             ) : (
-              <div className="w-full h-full bg-primary/10 flex items-center justify-center">
-                <User className="w-6 h-6 text-primary" />
+              <div className="w-full h-full bg-[#FAF3DD] dark:bg-[#201F18] flex items-center justify-center font-black text-sm text-[#49473E] dark:text-[#F4EFE6]">
+                {((donor.name || 'DN').slice(0, 2)).toUpperCase()}
               </div>
             )}
           </div>
-          <div className="absolute -bottom-1 -right-1 bg-primary rounded-full p-1 shadow-lg ring-2 ring-black">
-            <Heart className="w-2 h-2 text-white fill-white" />
+          <div className="absolute -bottom-1 -right-1 bg-[#FDE694] text-[#121212] rounded-full p-1 shadow-md ring-2 ring-[#FAF5E6] dark:ring-[#1F1E18]">
+            <Heart className="w-2.5 h-2.5 fill-[#121212] text-[#121212]" />
           </div>
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="font-bold text-white truncate group-hover:text-primary transition-colors">{donor.name}</h4>
+          <h4 className="font-extrabold text-sm sm:text-base text-[#1C1B17] dark:text-[#F4EFE6] truncate group-hover:text-amber-700 dark:group-hover:text-[#FDE694] transition-colors">
+            {donor.name}
+          </h4>
           {donor.username && (
-            <p className="text-xs text-muted-foreground truncate">@{donor.username}</p>
+            <p className="text-xs font-mono text-[#787567] dark:text-[#BDB8A4] truncate">
+              @{donor.username}
+            </p>
           )}
         </div>
       </div>
 
       {donor.message && (
-        <div className="relative mt-2">
-          <Quote className="w-4 h-4 text-primary/40 absolute -top-1 -left-2 rotate-180" />
-          <p className="text-sm text-muted-foreground leading-relaxed pl-4 italic">
+        <div className="relative mt-1 w-full">
+          <Quote className="w-3.5 h-3.5 text-amber-600/50 dark:text-[#FDE694]/50 absolute -top-1 -left-1.5 rotate-180" />
+          <p className="text-xs text-[#787567] dark:text-[#BDB8A4] leading-relaxed pl-3 italic line-clamp-3">
             {donor.message}
           </p>
         </div>
       )}
 
-      {/* Decorative background glow */}
-      {isNeon && (
-        <div className="absolute inset-0 rounded-2xl bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity blur-2xl -z-10" />
-      )}
+      {/* Subtle gold glow on hover */}
+      <div className="absolute inset-0 rounded-3xl bg-[#FDE694]/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl -z-10 pointer-events-none" />
     </motion.div>
   );
 }
@@ -133,25 +138,25 @@ function ParticlesBackground() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div ref={containerRef} className="absolute inset-0 overflow-hidden pointer-events-none opacity-30">
-      {Array.from({ length: 20 }).map((_, i) => (
+    <div ref={containerRef} className="absolute inset-0 overflow-hidden pointer-events-none opacity-20 dark:opacity-30">
+      {Array.from({ length: 18 }).map((_, i) => (
         <motion.div
           key={i}
-          className="absolute w-1 h-1 bg-primary/40 rounded-full"
+          className="absolute w-1.5 h-1.5 bg-[#FDE694] rounded-full blur-[0.5px]"
           initial={{
-            x: Math.random() * 100 + "%",
-            y: Math.random() * 100 + "%",
-            scale: Math.random() * 0.5 + 0.5,
+            x: `${(i * 5.5) % 100}%`,
+            y: "100%",
+            scale: 0.6 + (i % 5) * 0.15,
           }}
           animate={{
-            y: [null, "-100%"],
-            opacity: [0, 1, 0],
+            y: ["100%", "-20%"],
+            opacity: [0, 0.8, 0],
           }}
           transition={{
-            duration: Math.random() * 10 + 10,
+            duration: 12 + (i % 6) * 2,
             repeat: Infinity,
             ease: "linear",
-            delay: Math.random() * 10,
+            delay: (i * 0.7) % 6,
           }}
         />
       ))}
