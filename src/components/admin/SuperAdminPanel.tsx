@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useFirestore, useDoc, useMemoFirebase, useCollection, useStorage } from '@/firebase';
 import { doc, updateDoc, deleteDoc, query, orderBy, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Palette, Shield, User, Camera, Upload, Loader2, Save, CloudLightning } from 'lucide-react';
+import { Palette, Shield, User, Camera, Upload, Loader2, Save, CloudLightning, QrCode, Trash2 } from 'lucide-react';
+import { compressImage } from '@/lib/image-upload';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,31 @@ export default function SuperAdminPanel() {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [isUploadingQr, setIsUploadingQr] = useState(false);
+
+  const handleUploadQr = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingQr(true);
+    try {
+      const compressed = await compressImage(file, 800, 800, 0.90);
+      setFormData((prev: any) => ({
+        ...prev,
+        supportLinks: {
+          ...(prev?.supportLinks || {}),
+          qrLink: compressed,
+        }
+      }));
+      if (identityRef) {
+        await setDoc(identityRef, { qrImageUrl: compressed }, { merge: true });
+      }
+      toast({ title: "Donation QR Code Uploaded", description: "Image compressed and updated." });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "QR upload failed", description: err.message });
+    } finally {
+      setIsUploadingQr(false);
+    }
+  };
 
   const handleSync = async () => {
     setIsSyncing(true);
@@ -534,7 +560,7 @@ export default function SuperAdminPanel() {
         <TabsContent value="support">
           <Card>
             <CardHeader><CardTitle>Support Links & Funding Info</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               <div className="space-y-2">
                 <Label>Payment Link</Label>
                 <Input value={formData.supportLinks?.paymentLink || ''} onChange={(e) => setFormData({...formData, supportLinks: {...formData.supportLinks, paymentLink: e.target.value}})} />
@@ -543,9 +569,53 @@ export default function SuperAdminPanel() {
                 <Label>UPI ID</Label>
                 <Input value={formData.supportLinks?.upiId || ''} onChange={(e) => setFormData({...formData, supportLinks: {...formData.supportLinks, upiId: e.target.value}})} />
               </div>
-              <div className="space-y-2">
-                <Label>QR Link</Label>
-                <Input value={formData.supportLinks?.qrLink || ''} onChange={(e) => setFormData({...formData, supportLinks: {...formData.supportLinks, qrLink: e.target.value}})} />
+
+              {/* QR Code Upload Section */}
+              <div className="space-y-4 p-5 rounded-2xl bg-muted/40 border border-border">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-black uppercase flex items-center gap-2">
+                      <QrCode className="w-4 h-4 text-primary" />
+                      <span>Donation QR Code</span>
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground">Upload or set the payment QR image displayed to supporters</p>
+                  </div>
+                  {formData.supportLinks?.qrLink && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setFormData({...formData, supportLinks: {...formData.supportLinks, qrLink: ''}})}
+                      className="text-red-500 hover:text-red-600 hover:bg-red-500/10 h-8 px-2 text-xs font-black uppercase"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-1" />
+                      Remove
+                    </Button>
+                  )}
+                </div>
+
+                {formData.supportLinks?.qrLink && (
+                  <div className="w-40 h-40 bg-white rounded-2xl p-3 border border-border flex items-center justify-center shadow-xs mx-auto">
+                    <img src={formData.supportLinks.qrLink} alt="Donation QR Code" className="w-full h-full object-contain" />
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <label className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl border-2 border-dashed border-primary/50 hover:border-primary bg-primary/5 hover:bg-primary/10 text-xs font-black uppercase tracking-wider cursor-pointer transition-colors">
+                    {isUploadingQr ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <Upload className="w-4 h-4 text-primary" />}
+                    <span>{isUploadingQr ? "Compressing & Processing..." : "Upload QR Code Image"}</span>
+                    <input type="file" accept="image/*" disabled={isUploadingQr} onChange={handleUploadQr} className="hidden" />
+                  </label>
+
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground uppercase font-black">Or Direct QR URL</Label>
+                    <Input 
+                      value={formData.supportLinks?.qrLink?.startsWith('data:') ? '' : (formData.supportLinks?.qrLink || '')} 
+                      placeholder="https://.../qr.png"
+                      onChange={(e) => setFormData({...formData, supportLinks: {...formData.supportLinks, qrLink: e.target.value}})} 
+                      className="text-xs font-mono"
+                    />
+                  </div>
+                </div>
               </div>
               
               <div className="mt-8 border-t border-border pt-4">

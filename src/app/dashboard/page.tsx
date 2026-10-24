@@ -55,7 +55,9 @@ import {
   Upload,
   Image as LucideImage,
   Info,
-  Archive
+  Archive,
+  QrCode,
+  Heart
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -250,6 +252,13 @@ export default function DashboardPage() {
   const [isUploadingEditThumb, setIsUploadingEditThumb] = useState(false);
   const [isUploadingEditScreens, setIsUploadingEditScreens] = useState(false);
 
+  // Donation QR Code and payment states
+  const [donationQrUrl, setDonationQrUrl] = useState<string>('');
+  const [isUploadingDonationQr, setIsUploadingDonationQr] = useState(false);
+  const [donationUpiId, setDonationUpiId] = useState<string>('');
+  const [donationUpiAmount, setDonationUpiAmount] = useState<string>('');
+  const [isSavingDonationSettings, setIsSavingDonationSettings] = useState(false);
+
   const { user: currentUser } = useUser();
   const auth = useAuth();
   const db = useFirestore();
@@ -308,7 +317,79 @@ export default function DashboardPage() {
     if (settings?.loading) {
       setIsBootAnimationEnabled(settings.loading.enabled !== false);
     }
+    if (settings) {
+      if (settings.qrImageUrl) setDonationQrUrl(settings.qrImageUrl);
+      if (settings.upiId) setDonationUpiId(settings.upiId);
+      if (settings.upiAmount) setDonationUpiAmount(settings.upiAmount);
+    }
   }, [settings]);
+
+  const handleUploadDonationQr = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingDonationQr(true);
+    try {
+      const compressed = await compressImage(file, 800, 800, 0.90);
+      setDonationQrUrl(compressed);
+      
+      // Auto-save immediately to Firestore so users don't lose it
+      await setDoc(settingsRef, {
+        qrImageUrl: compressed,
+      }, { merge: true });
+
+      if (globalSettingsRef) {
+        await setDoc(globalSettingsRef, {
+          supportLinks: {
+            ...(globalSettings?.supportLinks || {}),
+            qrLink: compressed,
+          }
+        }, { merge: true });
+      }
+
+      toast({
+        title: "Donation QR Code Uploaded & Saved",
+        description: "The new QR code is now active across the site donation modal.",
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "QR Code Upload Failed",
+        description: err.message || "Failed to process image.",
+      });
+    } finally {
+      setIsUploadingDonationQr(false);
+    }
+  };
+
+  const handleSaveDonationSettings = async () => {
+    setIsSavingDonationSettings(true);
+    try {
+      await setDoc(settingsRef, {
+        qrImageUrl: donationQrUrl,
+        upiId: donationUpiId,
+        upiAmount: donationUpiAmount,
+      }, { merge: true });
+
+      if (globalSettingsRef) {
+        await setDoc(globalSettingsRef, {
+          supportLinks: {
+            ...(globalSettings?.supportLinks || {}),
+            qrLink: donationQrUrl,
+            upiId: donationUpiId,
+          }
+        }, { merge: true });
+      }
+
+      toast({
+        title: "Donation Protocol Updated",
+        description: "All donation parameters have been committed to the live registry.",
+      });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Save Failed", description: e.message });
+    } finally {
+      setIsSavingDonationSettings(false);
+    }
+  };
 
   useEffect(() => {
     if (!isBulkDialogOpen) {
@@ -1293,17 +1374,182 @@ export default function DashboardPage() {
             </div>
           ) : activeTab === 'payments' ? (
             <div className="space-y-8">
-              <div className="flex items-center gap-4"><CreditCard className="w-8 h-8 text-primary" /><h2 className="text-3xl font-black uppercase">Payment Hub</h2></div>
-              <Card className="p-8 rounded-[2rem] bg-muted/30 border-border space-y-6">
-                <div className="space-y-2">
-                  <Label>UPI ID</Label>
-                  <Input placeholder="UPI ID (e.g., user@upi)" defaultValue={settings?.upiId || ''} onBlur={(e) => updateDocumentNonBlocking(settingsRef, { upiId: e.target.value })} />
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-border/50">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-[1.5rem] bg-primary/10 flex items-center justify-center text-primary">
+                    <CreditCard className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-black uppercase tracking-tight">Payment & Donation Hub</h2>
+                    <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">
+                      Manage Donation QR Code & UPI contribution gateway
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>UPI Amount</Label>
-                  <Input placeholder="UPI Amount (e.g., 100)" defaultValue={settings?.upiAmount || ''} onBlur={(e) => updateDocumentNonBlocking(settingsRef, { upiAmount: e.target.value })} />
+                <Button 
+                  onClick={handleSaveDonationSettings}
+                  disabled={isSavingDonationSettings}
+                  className="h-12 px-6 rounded-2xl bg-primary text-primary-foreground font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20 flex items-center gap-2 cursor-pointer"
+                >
+                  {isSavingDonationSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  <span>Save Protocol</span>
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* QR Code Upload Card */}
+                <Card className="p-8 rounded-[2.5rem] bg-card border-border space-y-6 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
+                        <QrCode className="w-4 h-4 text-primary" />
+                        <span>Donation QR Code</span>
+                      </Label>
+                      <p className="text-[9px] text-muted-foreground uppercase">
+                        This QR code renders directly in the public Support Dialog
+                      </p>
+                    </div>
+                    {donationQrUrl && (
+                      <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[8px] font-black uppercase">
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* QR Image Preview Container */}
+                  <div className="relative aspect-square max-w-[280px] mx-auto w-full rounded-3xl bg-white border-2 border-border/60 p-4 flex items-center justify-center shadow-inner overflow-hidden group">
+                    {donationQrUrl ? (
+                      <img 
+                        src={donationQrUrl} 
+                        alt="Donation QR Code Preview" 
+                        className="w-full h-full object-contain" 
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-3 text-center p-4">
+                        <QrCode className="w-16 h-16 text-muted-foreground/30 stroke-[1.5]" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 leading-tight">
+                          No QR Code Configured<br />Upload one below
+                        </p>
+                      </div>
+                    )}
+
+                    {donationQrUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDonationQrUrl('');
+                          toast({ title: "QR Code Cleared", description: "Click Save Protocol to commit removal." });
+                        }}
+                        className="absolute top-3 right-3 p-2 rounded-xl bg-black/70 hover:bg-red-600 text-white transition-colors cursor-pointer shadow-md"
+                        title="Remove QR code"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Upload QR File Trigger */}
+                  <div className="space-y-3">
+                    <label className="flex items-center justify-center gap-2.5 w-full py-3.5 px-4 rounded-2xl border-2 border-dashed border-primary/40 hover:border-primary bg-primary/5 hover:bg-primary/10 text-foreground text-xs font-black uppercase tracking-wider cursor-pointer transition-all duration-200">
+                      {isUploadingDonationQr ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <Upload className="w-4 h-4 text-primary" />}
+                      <span>{isUploadingDonationQr ? "Processing & Compressing..." : "Upload New QR Code File"}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={isUploadingDonationQr}
+                        onChange={handleUploadDonationQr}
+                        className="hidden"
+                      />
+                    </label>
+
+                    <div className="space-y-1.5 pt-1">
+                      <Label className="text-[9px] font-black uppercase tracking-wider text-muted-foreground ml-1">
+                        Or Image Link (URL)
+                      </Label>
+                      <Input 
+                        value={donationQrUrl.startsWith('data:') ? '' : donationQrUrl}
+                        onChange={(e) => setDonationQrUrl(e.target.value)}
+                        placeholder="https://example.com/donation-qr.png" 
+                        className="bg-muted rounded-xl h-12 text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Direct UPI & Public Dialog Preview Card */}
+                <div className="space-y-6 flex flex-col justify-between">
+                  <Card className="p-8 rounded-[2.5rem] bg-card border-border space-y-5 shadow-sm">
+                    <div className="space-y-1">
+                      <Label className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-primary" />
+                        <span>UPI Gateway Settings</span>
+                      </Label>
+                      <p className="text-[9px] text-muted-foreground uppercase">
+                        Direct payment credentials shown alongside the QR code
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground ml-1">
+                        Direct UPI ID
+                      </Label>
+                      <Input 
+                        placeholder="e.g. yourname@okhdfcbank" 
+                        value={donationUpiId} 
+                        onChange={(e) => setDonationUpiId(e.target.value)} 
+                        className="bg-muted rounded-xl h-12 font-mono text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground ml-1">
+                        Suggested Amount (INR)
+                      </Label>
+                      <Input 
+                        placeholder="e.g. 100" 
+                        value={donationUpiAmount} 
+                        onChange={(e) => setDonationUpiAmount(e.target.value)} 
+                        className="bg-muted rounded-xl h-12 font-mono text-xs"
+                      />
+                    </div>
+                  </Card>
+
+                  {/* Public Modal Simulation Preview */}
+                  <Card className="p-6 rounded-[2.5rem] bg-muted/30 border border-border/60 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-1.5">
+                        <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+                        <span>Public Dialog Preview</span>
+                      </span>
+                      <span className="text-[8px] font-mono text-muted-foreground">Live Simulation</span>
+                    </div>
+
+                    <div className="bg-[#FAF3DD] dark:bg-[#1A1914] border border-[#EBE4CF] dark:border-[#2C2A22] rounded-3xl p-5 flex flex-col items-center text-center gap-3 shadow-inner">
+                      <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-tight text-[#1C1B17] dark:text-[#F4EFE6]">
+                        <Heart className="w-3.5 h-3.5 text-rose-500 fill-current" />
+                        <span>Support SKY Hub</span>
+                      </div>
+
+                      <div className="w-32 h-32 bg-white rounded-2xl p-2 border border-[#EBE4CF] flex items-center justify-center shadow-xs">
+                        {donationQrUrl ? (
+                          <img src={donationQrUrl} alt="QR Preview" className="w-full h-full object-contain" />
+                        ) : (
+                          <span className="text-[9px] text-muted-foreground font-mono">No QR Active</span>
+                        )}
+                      </div>
+
+                      <div className="w-full bg-[#FFF8E1] dark:bg-[#202024] p-2.5 rounded-xl border border-[#EBE4CF] dark:border-[#303035] flex items-center justify-between text-left">
+                        <span className="text-[10px] font-mono truncate text-[#1C1B17] dark:text-[#F4EFE6] max-w-[150px]">
+                          {donationUpiId || 'No UPI ID Set'}
+                        </span>
+                        <Badge className="bg-[#FDE694] text-[#121212] text-[8px] font-black uppercase px-2 py-0.5">
+                          Copy
+                        </Badge>
+                      </div>
+                    </div>
+                  </Card>
                 </div>
-              </Card>
+              </div>
             </div>
           ) : activeTab === 'visuals' ? (
             <div className="space-y-8">
