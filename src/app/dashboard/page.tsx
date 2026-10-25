@@ -57,7 +57,8 @@ import {
   Info,
   Archive,
   QrCode,
-  Heart
+  Heart,
+  Bell
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -118,6 +119,7 @@ import { ShowcaseManager } from '@/components/admin/ShowcaseManager';
 import { CreditsManager } from '@/components/admin/CreditsManager';
 import { compressImage } from '@/lib/image-upload';
 import { publishNotification } from '@/lib/notifications';
+import { NotificationManager } from '@/components/admin/NotificationManager';
 
 const HARDCODED_SUPERADMIN = 'meinkxun@gmail.com';
 const HUB_OWNERS = [HARDCODED_SUPERADMIN, 'skyhubowner@gmail.com'];
@@ -418,6 +420,7 @@ export default function DashboardPage() {
     { id: 'visuals', label: 'Visual Protocols', icon: <Monitor className="w-4 h-4" />, permission: 'adminOnly' },
     { id: 'ai-extract', label: 'AI Terminal', icon: <Bot className="w-4 h-4" />, permission: 'adminOnly' },
     { id: 'telegram-sync', label: 'Telegram Sync', icon: <CloudLightning className="w-4 h-4" />, permission: 'adminOnly' },
+    { id: 'notifications', label: 'Push Notifications', icon: <Bell className="w-4 h-4 text-amber-500" />, permission: 'adminOnly' },
     { id: 'history', label: 'Message History', icon: <MessageCircle className="w-4 h-4" />, permission: 'adminOnly' },
     { id: 'users', label: 'Identity Mgmt', icon: <Users className="w-4 h-4" />, permission: 'adminOnly' },
     { id: 'payments', label: 'Payment Hub', icon: <CreditCard className="w-4 h-4" />, permission: 'superAdminOnly' },
@@ -1675,6 +1678,8 @@ export default function DashboardPage() {
             <ShowcaseManager />
           ) : activeTab === 'credits' ? (
             <CreditsManager />
+          ) : activeTab === 'notifications' ? (
+            <NotificationManager />
           ) : activeTab === 'ai-extract' ? (
             <div className="space-y-8">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
