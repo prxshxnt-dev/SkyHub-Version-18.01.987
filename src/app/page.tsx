@@ -31,7 +31,7 @@ import { motion } from 'motion/react';
 import { SiteSettings } from '@/lib/store';
 import { FloatingKitten } from '@/components/ui/floating-kitten';
 
-const sectionVariants = {
+const sectionVariants: any = {
   hidden: { opacity: 0, y: 30 },
   visible: { 
     opacity: 1, 

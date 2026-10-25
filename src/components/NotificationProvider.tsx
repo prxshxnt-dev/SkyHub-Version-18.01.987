@@ -1,47 +1,73 @@
 'use client';
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useFirestore } from '@/firebase';
-import { collection, query, onSnapshot, where, Timestamp } from 'firebase/firestore';
+import { collection, query, onSnapshot, where, Timestamp, orderBy, limit } from 'firebase/firestore';
+import { Bell, Package, ShieldAlert, Smartphone, Zap, ExternalLink, X, Radio } from 'lucide-react';
+import { playNotificationChime } from '@/lib/notifications';
+import Link from 'next/link';
+
+interface ActiveToast {
+  id: string | number;
+  title?: string;
+  message: string;
+  link?: string;
+  type?: string;
+}
 
 const NotificationContext = createContext<any>(null);
 
 export const NotificationProvider = ({ children }: { children: React.ReactNode }) => {
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [toasts, setToasts] = useState<ActiveToast[]>([]);
   const db = useFirestore();
+  const isFirstLoadRef = useRef(true);
 
-  const addNotification = useCallback((message: string, duration = 5000) => {
-    const id = Date.now();
-    setNotifications((prev) => [...prev, { id, message }]);
+  const addNotification = useCallback((message: string, duration = 6000, meta?: { title?: string; link?: string; type?: string }) => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev, { id, message, ...meta }]);
+
     setTimeout(() => {
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      setToasts((prev) => prev.filter((n) => n.id !== id));
     }, duration);
+  }, []);
+
+  const removeToast = useCallback((id: string | number) => {
+    setToasts((prev) => prev.filter((n) => n.id !== id));
   }, []);
 
   useEffect(() => {
     if (!db) return;
 
-    // Fetch all active notifications (those that haven't expired yet)
+    // Listen to real-time additions in 'notifications'
     const now = Timestamp.now();
     const q = query(
       collection(db, 'notifications'),
-      where('expiresAt', '>', now)
+      orderBy('createdAt', 'desc'),
+      limit(10)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      // Avoid firing toast for historical records on initial page mount
+      if (isFirstLoadRef.current) {
+        isFirstLoadRef.current = false;
+        return;
+      }
+
       snapshot.docChanges().forEach((change) => {
         if (change.type === 'added') {
           const data = change.doc.data();
-          const expiresAt = data.expiresAt?.toDate() || new Date();
-          const timeLeft = expiresAt.getTime() - Date.now();
-          
-          if (timeLeft > 0) {
-            addNotification(data.message, Math.min(timeLeft, data.duration || 10000));
-          }
+          const title = data.title || 'New Release Transmission';
+          const message = data.message || 'A new update is now available on SKY Hub.';
+          const link = data.link || '/#notifications';
+          const type = data.type || 'rom';
+
+          playNotificationChime();
+          addNotification(message, 7000, { title, link, type });
         }
       });
     }, (error) => {
-      console.error("Neural Notification Sync Interrupted:", error);
+      console.error("Transmission synchronization error:", error);
     });
 
     return () => unsubscribe();
@@ -50,24 +76,62 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   return (
     <NotificationContext.Provider value={{ addNotification }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
+      {/* Toast Alert Container on Top/Bottom */}
+      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none max-w-sm w-full px-4 sm:px-0">
         <AnimatePresence>
-          {notifications.map((n) => (
+          {toasts.map((toast) => (
             <motion.div
-              key={n.id}
-              initial={{ opacity: 0, x: 50, scale: 0.9, filter: 'blur(10px)' }}
-              animate={{ opacity: 1, x: 0, scale: 1, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, x: 50, scale: 0.9, filter: 'blur(10px)' }}
-              className="bg-primary/90 text-primary-foreground px-6 py-4 rounded-2xl shadow-[0_20px_50px_rgba(37,99,235,0.3)] font-black uppercase text-[10px] tracking-[0.2em] border border-white/20 pointer-events-auto backdrop-blur-xl flex items-center gap-4 min-w-[300px]"
+              key={toast.id}
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-[#FAF3DD]/95 dark:bg-[#181714]/95 text-[#1C1B17] dark:text-[#F4EFE6] p-4 rounded-3xl shadow-2xl border border-[#EBE4CF] dark:border-[#2C2A22] pointer-events-auto backdrop-blur-xl flex items-start gap-3.5 relative overflow-hidden ring-1 ring-[#FDE694]/40"
             >
-              <div className="relative">
-                <div className="w-3 h-3 rounded-full bg-white shadow-[0_0_15px_rgba(255,255,255,1)]" />
-                <div className="absolute inset-0 w-3 h-3 rounded-full bg-white animate-ping opacity-50" />
+              {/* Pulsing indicator */}
+              <div className="w-9 h-9 rounded-2xl bg-[#FDE694]/30 dark:bg-[#FDE694]/15 border border-[#FDE694]/50 flex items-center justify-center shrink-0 text-amber-700 dark:text-[#FDE694] mt-0.5">
+                <Bell className="w-4 h-4 animate-bounce" />
               </div>
-              <div className="flex-1">
-                <p className="opacity-50 text-[7px] mb-1">Incoming Transmission</p>
-                {n.message}
+
+              <div className="flex-1 min-w-0 pr-6">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping shrink-0" />
+                  <p className="text-[9px] font-black uppercase tracking-widest text-amber-700 dark:text-[#FDE694]">
+                    LIVE TRANSMISSION
+                  </p>
+                </div>
+
+                {toast.title && (
+                  <h5 className="font-black text-xs uppercase tracking-tight truncate text-[#1C1B17] dark:text-[#F4EFE6] mb-1">
+                    {toast.title}
+                  </h5>
+                )}
+
+                <p className="text-[11px] text-[#787567] dark:text-[#BDB8A4] leading-relaxed line-clamp-2 mb-2">
+                  {toast.message}
+                </p>
+
+                {toast.link && (
+                  <Link
+                    href={toast.link}
+                    onClick={() => removeToast(toast.id)}
+                    className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-[#FDE694] hover:underline"
+                  >
+                    <span>Inspect Release</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </Link>
+                )}
               </div>
+
+              {/* Dismiss Button */}
+              <button
+                type="button"
+                onClick={() => removeToast(toast.id)}
+                className="absolute top-3 right-3 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                title="Dismiss"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </motion.div>
           ))}
         </AnimatePresence>

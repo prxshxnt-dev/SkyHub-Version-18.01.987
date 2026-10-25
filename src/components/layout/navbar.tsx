@@ -16,7 +16,8 @@ import {
   MessageSquare,
   Sparkles,
   BookOpen,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Bell
 } from 'lucide-react';
 import { 
   AnimatedHome,
@@ -44,6 +45,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { DEFAULT_DONATION_CONFIG, SiteSettings } from '@/lib/store';
 import { AuthModal } from '@/components/auth/auth-modal';
+import { NotificationCenter } from './NotificationCenter';
 
 const HUB_OWNERS = ['meinkxun@gmail.com', 'skyhubowner@gmail.com'];
 
@@ -153,6 +155,7 @@ export function Navbar() {
     { name: 'Home', href: '/', icon: AnimatedHome },
     { name: 'Device', href: '/#device', icon: AnimatedSmartphone },
     { name: 'ROMs', href: '/#roms', icon: AnimatedLayers },
+    { name: 'Feeds', href: '/#notifications', icon: Bell },
     { name: 'Team', href: '/#team', icon: AnimatedUsers },
     { name: 'Community', href: '/#community', icon: AnimatedMessageCircle },
     { name: 'Guides', href: '/guides', icon: BookOpen },
@@ -231,6 +234,9 @@ export function Navbar() {
               ⌘K
             </kbd>
           </button>
+
+          {/* Notifications Center */}
+          <NotificationCenter />
 
           {/* Theme Toggle */}
           <button
@@ -316,6 +322,8 @@ export function Navbar() {
           </Link>
 
           <div className="flex items-center gap-1">
+            <NotificationCenter />
+
             <button
               type="button"
               onClick={() => setIsSearchOpen(true)}

@@ -117,6 +117,7 @@ import BackupExporter from '@/components/admin/BackupExporter';
 import { ShowcaseManager } from '@/components/admin/ShowcaseManager';
 import { CreditsManager } from '@/components/admin/CreditsManager';
 import { compressImage } from '@/lib/image-upload';
+import { publishNotification } from '@/lib/notifications';
 
 const HARDCODED_SUPERADMIN = 'meinkxun@gmail.com';
 const HUB_OWNERS = [HARDCODED_SUPERADMIN, 'skyhubowner@gmail.com'];
@@ -171,6 +172,7 @@ const defaultLayoutItems = [
   { id: 'slideshow', order: 0, visible: true, label: "Slideshow" },
   { id: 'hero', order: 1, visible: true, label: "Hero Banner" },
   { id: 'donors', order: 1.5, visible: true, label: "Donors Showcase" },
+  { id: 'notifications', order: 1.8, visible: true, label: "Live Feed & Notifications" },
   { id: 'roms', order: 2, visible: true, label: "ROMs" },
   { id: 'modules', order: 3, visible: true, label: "Modules" },
   { id: 'apks', order: 4, visible: true, label: "Mod APKs" },
@@ -621,6 +623,37 @@ export default function DashboardPage() {
       // Log Activity
       if (currentUser) {
         logActivity(db, currentUser.uid, `Imported ${items.length} items to ${collectionName} via AI`);
+      }
+
+      // Live Community Notification Broadcast
+      if (items.length > 0) {
+        const firstItem = items[0];
+        const notifType = (collectionName === 'roms' ? 'rom'
+          : collectionName === 'modules' ? 'module'
+          : collectionName === 'mod-apks' ? 'apk'
+          : collectionName === 'tutorials' ? 'guide'
+          : collectionName === 'root-packages' ? 'root'
+          : 'announcement') as any;
+
+        const notifLink = collectionName === 'roms' ? '/#roms'
+          : collectionName === 'modules' ? '/#modules'
+          : collectionName === 'mod-apks' ? '/#rooted-apks'
+          : collectionName === 'tutorials' ? '/guides'
+          : collectionName === 'root-packages' ? '/#root'
+          : '/';
+
+        await publishNotification(db, {
+          title: items.length === 1 
+            ? `New Release: ${firstItem.name || firstItem.title || 'Resource'}`
+            : `${items.length} New ${collectionName.toUpperCase()} Releases Published`,
+          message: items.length === 1 
+            ? `${firstItem.name || firstItem.title} is now available in Sky Hub.`
+            : `${items.length} new items have been deployed to ${collectionName}. Check out the fresh updates!`,
+          type: notifType,
+          link: notifLink,
+          imageUrl: firstItem.imageUrl || undefined,
+          author: profile?.username || 'Admin'
+        }).catch(err => console.error("Batch notification broadcast error:", err));
       }
 
       setExtractedItems([]);
@@ -2145,8 +2178,38 @@ export default function DashboardPage() {
                 data.screenshots = Array.from(new Set([...addRomScreenshots, ...manual]));
               }
               await setDoc(newDocRef, data);
+
+              // Broadcast live notification to all users
+              const itemName = data.name || data.title || 'New Release';
+              const tabItem = menuItems.find(i => i.id === activeTab);
+              const notifType = (activeTab === 'roms' ? 'rom' 
+                : activeTab === 'recoveries' ? 'recovery'
+                : activeTab === 'modules' ? 'module'
+                : activeTab === 'mod-apks' ? 'apk'
+                : activeTab === 'guides' ? 'guide'
+                : activeTab === 'root' ? 'root'
+                : 'announcement') as any;
+
+              const notifLink = activeTab === 'roms' ? '/#roms'
+                : activeTab === 'recoveries' ? '/#recoveries'
+                : activeTab === 'modules' ? '/#modules'
+                : activeTab === 'mod-apks' ? '/#rooted-apks'
+                : activeTab === 'guides' ? '/guides'
+                : activeTab === 'root' ? '/#root'
+                : '/';
+
+              await publishNotification(db, {
+                title: `New ${tabItem?.label || 'Resource'} Available: ${itemName}`,
+                message: `${itemName}${data.version ? ` (${data.version})` : ''} has been published by ${profile?.username || 'Admin'} in Sky Hub.`,
+                type: notifType,
+                link: notifLink,
+                imageUrl: data.imageUrl || undefined,
+                author: profile?.username || 'Admin',
+                version: data.version || data.androidVersion || undefined
+              }).catch(err => console.error("Notification broadcast error:", err));
+
               setIsAddDialogOpen(false);
-              toast({ title: "Resource Added", description: "The registry has been updated." });
+              toast({ title: "Resource Added", description: "The registry has been updated and a live notification broadcast was sent to all users." });
             } catch (e) { toast({ variant: "destructive", title: "Failed to add resource." }); }
             finally { setIsAdding(false); }
           }} className="space-y-4 mt-4">
