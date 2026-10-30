@@ -1,6 +1,45 @@
-import { collection, addDoc, serverTimestamp, Timestamp, Firestore } from 'firebase/firestore';
+import { 
+  collection, 
+  addDoc, 
+  serverTimestamp, 
+  Timestamp, 
+  Firestore, 
+  doc, 
+  getDoc, 
+  setDoc 
+} from 'firebase/firestore';
 
 export type NotificationType = 'rom' | 'recovery' | 'module' | 'apk' | 'guide' | 'root' | 'announcement';
+export type AttachmentType = 'none' | 'image' | 'video' | 'audio';
+
+export interface NotificationAttachment {
+  type: AttachmentType;
+  url: string;
+  name?: string;
+  mimeType?: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  type?: NotificationType;
+  category?: string;
+  link?: string;
+  resourceId?: string;
+  // Attachments
+  attachmentType?: AttachmentType;
+  attachmentUrl?: string;
+  attachmentName?: string;
+  imageUrl?: string;
+  videoUrl?: string;
+  author?: string;
+  version?: string;
+  createdAt?: any;
+  updatedAt?: any;
+  priority?: 'normal' | 'high';
+  duration?: number;
+}
 
 export interface PublishNotificationParams {
   title: string;
@@ -9,9 +48,68 @@ export interface PublishNotificationParams {
   resourceId?: string;
   category?: string;
   link?: string;
+  version?: string;
+  // Attachment fields
+  attachmentType?: AttachmentType;
+  attachmentUrl?: string;
+  attachmentName?: string;
   imageUrl?: string;
+  videoUrl?: string;
+  audioUrl?: string;
   author?: string;
   duration?: number;
+  priority?: 'normal' | 'high';
+}
+
+export interface NotificationSettings {
+  soundEnabled: boolean;
+  bannerPopupEnabled: boolean;
+  bannerDuration: number; // in milliseconds, e.g. 7000
+  autoNotifyOnPublish: boolean;
+  defaultPriority: 'normal' | 'high';
+  allowedTypes: NotificationType[];
+  customChimeUrl?: string;
+}
+
+export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+  soundEnabled: true,
+  bannerPopupEnabled: true,
+  bannerDuration: 7000,
+  autoNotifyOnPublish: true,
+  defaultPriority: 'normal',
+  allowedTypes: ['rom', 'recovery', 'module', 'apk', 'guide', 'root', 'announcement'],
+  customChimeUrl: '',
+};
+
+/**
+ * Fetches global notification system settings from Firestore (settings/notifications)
+ */
+export async function getNotificationSettings(db: Firestore): Promise<NotificationSettings> {
+  if (!db) return DEFAULT_NOTIFICATION_SETTINGS;
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'notifications'));
+    if (snap.exists()) {
+      return { ...DEFAULT_NOTIFICATION_SETTINGS, ...snap.data() } as NotificationSettings;
+    }
+  } catch (err) {
+    console.warn("Could not fetch notification settings from Firestore:", err);
+  }
+  return DEFAULT_NOTIFICATION_SETTINGS;
+}
+
+/**
+ * Saves/updates global notification system settings in Firestore
+ */
+export async function updateNotificationSettings(
+  db: Firestore, 
+  settings: Partial<NotificationSettings>
+): Promise<void> {
+  if (!db) throw new Error("Firestore instance required");
+  const ref = doc(db, 'settings', 'notifications');
+  await setDoc(ref, {
+    ...settings,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
 }
 
 /**
@@ -34,21 +132,49 @@ export async function publishNotification(
     // Set 30 days retention so notifications remain available in history
     const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    const docRef = await addDoc(notificationsRef, {
+    // Normalize attachment type & URLs
+    let resolvedType: AttachmentType = params.attachmentType || 'none';
+    let resolvedUrl: string | null = params.attachmentUrl || null;
+
+    if (!resolvedUrl) {
+      if (params.imageUrl) {
+        resolvedType = 'image';
+        resolvedUrl = params.imageUrl;
+      } else if (params.videoUrl) {
+        resolvedType = 'video';
+        resolvedUrl = params.videoUrl;
+      } else if (params.audioUrl) {
+        resolvedType = 'audio';
+        resolvedUrl = params.audioUrl;
+      }
+    }
+
+    const payload: Record<string, any> = {
       title: params.title.trim(),
       message: params.message.trim(),
       type: params.type,
       resourceId: params.resourceId || null,
       category: params.category || getDefaultCategory(params.type),
       link: params.link || getDefaultLink(params.type),
-      imageUrl: params.imageUrl || null,
+      
+      // Multimedia attachments
+      attachmentType: resolvedType,
+      attachmentUrl: resolvedUrl,
+      attachmentName: params.attachmentName || null,
+      
+      // Backward-compatible individual fields
+      imageUrl: resolvedType === 'image' ? resolvedUrl : (params.imageUrl || null),
+      videoUrl: resolvedType === 'video' ? resolvedUrl : (params.videoUrl || null),
+      audioUrl: resolvedType === 'audio' ? resolvedUrl : (params.audioUrl || null),
+
       author: params.author || 'SKY Maintainer',
       createdAt: serverTimestamp(),
       expiresAt: Timestamp.fromDate(thirtyDaysFromNow),
-      duration: params.duration || 8000,
-      priority: params.type === 'rom' || params.type === 'recovery' ? 'high' : 'normal',
-    });
+      duration: params.duration || 7000,
+      priority: params.priority || (params.type === 'rom' || params.type === 'recovery' ? 'high' : 'normal'),
+    };
 
+    const docRef = await addDoc(notificationsRef, payload);
     return docRef.id;
   } catch (error) {
     console.error("Failed to publish real-time notification:", error);
@@ -56,7 +182,7 @@ export async function publishNotification(
   }
 }
 
-function getDefaultCategory(type: NotificationType): string {
+export function getDefaultCategory(type: NotificationType): string {
   switch (type) {
     case 'rom': return 'Custom ROM';
     case 'recovery': return 'Recovery Protocol';
@@ -68,7 +194,7 @@ function getDefaultCategory(type: NotificationType): string {
   }
 }
 
-function getDefaultLink(type: NotificationType): string {
+export function getDefaultLink(type: NotificationType): string {
   switch (type) {
     case 'rom': return '/#roms';
     case 'recovery': return '/#recoveries';
@@ -125,10 +251,28 @@ export function isNotificationRead(id: string): boolean {
 
 /**
  * Plays a pleasant, subtle futuristic audio chime for incoming notifications
- * using Web Audio API without needing external asset files.
+ * using Web Audio API or custom audio file if provided.
  */
-export function playNotificationChime(): void {
+export function playNotificationChime(customAudioUrl?: string): void {
   if (typeof window === 'undefined') return;
+  
+  if (customAudioUrl) {
+    try {
+      const audio = new Audio(customAudioUrl);
+      audio.volume = 0.5;
+      audio.play().catch(() => {
+        playDefaultWebAudioChime();
+      });
+      return;
+    } catch {
+      // fallback to synth chime
+    }
+  }
+
+  playDefaultWebAudioChime();
+}
+
+function playDefaultWebAudioChime(): void {
   try {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextClass) return;

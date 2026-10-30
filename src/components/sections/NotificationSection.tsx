@@ -21,12 +21,26 @@ import {
   User, 
   Sparkles,
   ChevronRight,
-  Filter
+  Filter,
+  Video,
+  Music,
+  Paperclip,
+  Maximize2,
+  FileText,
+  Download,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { 
   getReadNotificationIds, 
@@ -34,8 +48,10 @@ import {
   markAllNotificationsAsRead, 
   isNotificationRead,
   playNotificationChime,
-  NotificationType
+  NotificationType,
+  AttachmentType
 } from '@/lib/notifications';
+import { resolveNotificationMedia } from '@/components/layout/NotificationCenter';
 import Link from 'next/link';
 
 interface NotificationItem {
@@ -47,6 +63,11 @@ interface NotificationItem {
   link?: string;
   resourceId?: string;
   imageUrl?: string;
+  videoUrl?: string;
+  audioUrl?: string;
+  attachmentType?: AttachmentType;
+  attachmentUrl?: string;
+  attachmentName?: string;
   author?: string;
   createdAt?: any;
   priority?: string;
@@ -105,6 +126,14 @@ export function NotificationSection() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [isFirstLoad, setIsFirstLoad] = useState<boolean>(true);
+  const [modalMedia, setModalMedia] = useState<{
+    type: 'image' | 'video' | 'audio' | 'file';
+    url: string;
+    title: string;
+    name?: string;
+    category?: string;
+    message?: string;
+  } | null>(null);
 
   // Sync read status from localStorage
   useEffect(() => {
@@ -366,16 +395,147 @@ export function NotificationSection() {
                         </div>
                       </div>
 
-                      {/* Optional Thumbnail or Image Preview */}
-                      {item.imageUrl && (
-                        <div className="relative aspect-[16/9] w-full rounded-2xl overflow-hidden bg-black/10 dark:bg-black/40 mb-3.5 border border-[#EBE4CF] dark:border-[#36342A]">
-                          <img 
-                            src={item.imageUrl} 
-                            alt={item.title} 
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          />
-                        </div>
-                      )}
+                      {/* Multimedia Attachment: Video, Audio, Image, or File */}
+                      {(() => {
+                        const media = resolveNotificationMedia(item);
+                        if (media.type === 'none' || !media.url) return null;
+
+                        return (
+                          <div className="mb-4" onClick={(e) => e.stopPropagation()}>
+                            {/* Image Attachment */}
+                            {media.type === 'image' && (
+                              <div className="space-y-1.5">
+                                {media.name && (
+                                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground truncate">
+                                    <Paperclip className="w-3 h-3 text-amber-600 dark:text-[#FDE694]" />
+                                    <span className="truncate">{media.name}</span>
+                                  </div>
+                                )}
+                                <div 
+                                  onClick={() => {
+                                    handleItemClick(item);
+                                    setModalMedia({
+                                      type: 'image',
+                                      url: media.url!,
+                                      title: item.title,
+                                      name: media.name,
+                                      category: item.category || item.type,
+                                      message: item.message,
+                                    });
+                                  }}
+                                  className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black/10 dark:bg-black/40 border border-[#EBE4CF] dark:border-[#36342A] group cursor-zoom-in shadow-sm"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img 
+                                    src={media.url} 
+                                    alt={item.title} 
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                                    loading="lazy"
+                                  />
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                                    <span className="opacity-0 group-hover:opacity-100 transition-opacity px-3.5 py-1.5 rounded-full bg-black/80 text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-xs shadow-md">
+                                      <Maximize2 className="w-3.5 h-3.5 text-amber-400" /> View Full Image
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Video Attachment with Direct Player & Theater Modal */}
+                            {media.type === 'video' && (
+                              <div className="rounded-2xl overflow-hidden bg-black border border-[#EBE4CF] dark:border-[#36342A] shadow-md">
+                                <video 
+                                  controls 
+                                  playsInline 
+                                  preload="metadata" 
+                                  className="w-full max-h-64 object-contain mx-auto" 
+                                  src={media.url}
+                                >
+                                  Your browser does not support video playback.
+                                </video>
+                                <div className="px-3 py-2 bg-[#FAF5E6] dark:bg-[#161511] flex items-center justify-between text-[11px] border-t border-[#EBE4CF] dark:border-[#2C2A22]">
+                                  <span className="font-bold text-[#787567] dark:text-[#9A9583] flex items-center gap-1.5 truncate">
+                                    <Video className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                    <span className="truncate">{media.name || 'Video Broadcast'}</span>
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleItemClick(item);
+                                      setModalMedia({
+                                        type: 'video',
+                                        url: media.url!,
+                                        title: item.title,
+                                        name: media.name,
+                                        category: item.category || item.type,
+                                        message: item.message,
+                                      });
+                                    }}
+                                    className="text-amber-700 dark:text-[#FDE694] font-black uppercase tracking-wider hover:underline flex items-center gap-1 cursor-pointer text-[10px] shrink-0 ml-2"
+                                  >
+                                    <Maximize2 className="w-3 h-3" /> Theater Mode
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Audio Attachment with Player & Popout */}
+                            {media.type === 'audio' && (
+                              <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-500/10 border border-amber-500/25 space-y-2.5 shadow-sm">
+                                <div className="flex items-center justify-between text-[11px]">
+                                  <span className="font-black uppercase tracking-wider text-amber-800 dark:text-[#FDE694] flex items-center gap-2 truncate">
+                                    <Volume2 className="w-4 h-4 text-amber-600 dark:text-[#FDE694] shrink-0" />
+                                    <span className="truncate">{media.name || 'Audio Transmission'}</span>
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleItemClick(item);
+                                      setModalMedia({
+                                        type: 'audio',
+                                        url: media.url!,
+                                        title: item.title,
+                                        name: media.name,
+                                        category: item.category || item.type,
+                                        message: item.message,
+                                      });
+                                    }}
+                                    className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-[#FDE694] hover:underline flex items-center gap-1 cursor-pointer shrink-0 ml-2"
+                                  >
+                                    <Maximize2 className="w-3 h-3" /> Full Player
+                                  </button>
+                                </div>
+                                <audio 
+                                  controls 
+                                  preload="none" 
+                                  className="w-full h-8 accent-amber-500" 
+                                  src={media.url}
+                                />
+                              </div>
+                            )}
+
+                            {/* Generic File Attachment */}
+                            {media.type === 'file' && (
+                              <div className="p-3 rounded-2xl border border-[#EBE4CF] dark:border-[#2C2A22] bg-black/5 dark:bg-black/20 flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <FileText className="w-4 h-4 text-amber-600 dark:text-[#FDE694] shrink-0" />
+                                  <span className="text-[11px] font-mono text-[#1C1B17] dark:text-[#F4EFE6] truncate">
+                                    {media.name || 'Attached File'}
+                                  </span>
+                                </div>
+                                <a
+                                  href={media.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-700 dark:text-[#FDE694] text-[10px] font-black uppercase tracking-wider hover:bg-amber-500/25 flex items-center gap-1 shrink-0"
+                                >
+                                  <Download className="w-3 h-3" /> Download
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       {/* Notification Title */}
                       <h4 className="text-base font-black uppercase tracking-tight text-[#1C1B17] dark:text-[#F4EFE6] mb-2 leading-snug group-hover:text-amber-600 dark:group-hover:text-[#FDE694] transition-colors">
@@ -420,6 +580,109 @@ export function NotificationSection() {
           </AnimatePresence>
         </div>
       )}
+
+      {/* MULTIMEDIA INSPECTION MODAL (Lightbox / Theater Preview) */}
+      <Dialog open={!!modalMedia} onOpenChange={(open) => !open && setModalMedia(null)}>
+        <DialogContent className="max-w-3xl rounded-3xl p-6 bg-[#FAF3DD] dark:bg-[#1A1914] border border-[#EBE4CF] dark:border-[#2C2A22] text-[#1C1B17] dark:text-[#F4EFE6] shadow-2xl">
+          {modalMedia && (
+            <div className="space-y-4">
+              <DialogHeader className="text-left space-y-1">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-[#FDE694] text-[#121212] font-black text-[9px] uppercase tracking-wider px-2 py-0.5">
+                    {modalMedia.category || modalMedia.type}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground uppercase font-bold flex items-center gap-1">
+                    {modalMedia.type === 'image' && <ImageIcon className="w-3.5 h-3.5 text-amber-600" />}
+                    {modalMedia.type === 'video' && <Video className="w-3.5 h-3.5 text-amber-600" />}
+                    {modalMedia.type === 'audio' && <Music className="w-3.5 h-3.5 text-amber-600" />}
+                    {modalMedia.type === 'file' && <FileText className="w-3.5 h-3.5 text-amber-600" />}
+                    {modalMedia.type} Attachment
+                  </span>
+                </div>
+                <DialogTitle className="text-base sm:text-lg font-black uppercase tracking-tight text-[#1C1B17] dark:text-[#F4EFE6]">
+                  {modalMedia.title}
+                </DialogTitle>
+                {modalMedia.name && (
+                  <p className="text-[10px] font-mono text-muted-foreground">
+                    File: {modalMedia.name}
+                  </p>
+                )}
+                {modalMedia.message && (
+                  <DialogDescription className="text-xs text-[#787567] dark:text-[#9A9583] line-clamp-2">
+                    {modalMedia.message}
+                  </DialogDescription>
+                )}
+              </DialogHeader>
+
+              {/* Media Content Display */}
+              <div className="rounded-2xl overflow-hidden bg-black/90 border border-[#EBE4CF] dark:border-[#2C2A22] flex items-center justify-center min-h-[240px] max-h-[65vh]">
+                {modalMedia.type === 'image' && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img 
+                    src={modalMedia.url} 
+                    alt={modalMedia.title}
+                    className="max-h-[65vh] w-auto max-w-full object-contain mx-auto"
+                  />
+                )}
+
+                {modalMedia.type === 'video' && (
+                  <video 
+                    src={modalMedia.url} 
+                    controls 
+                    autoPlay 
+                    playsInline 
+                    className="max-h-[65vh] w-full object-contain"
+                  />
+                )}
+
+                {modalMedia.type === 'audio' && (
+                  <div className="w-full p-8 flex flex-col items-center justify-center space-y-6 bg-gradient-to-b from-[#2B2A22] to-[#181714] text-center">
+                    <div className="w-20 h-20 rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center text-amber-400 animate-pulse">
+                      <Music className="w-10 h-10" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="font-black text-sm uppercase text-amber-200">
+                        Now Playing: {modalMedia.name || modalMedia.title}
+                      </h4>
+                      <p className="text-[11px] text-amber-300/70">
+                        Direct transmission audio stream
+                      </p>
+                    </div>
+                    <audio 
+                      src={modalMedia.url} 
+                      controls 
+                      autoPlay 
+                      className="w-full max-w-md accent-amber-500"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center justify-between pt-2">
+                <a
+                  href={modalMedia.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-black uppercase text-amber-700 dark:text-[#FDE694] hover:underline inline-flex items-center gap-1.5"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Open raw attachment in new tab</span>
+                </a>
+
+                <Button 
+                  type="button"
+                  variant="outline"
+                  onClick={() => setModalMedia(null)}
+                  className="font-bold text-xs uppercase rounded-xl border-[#EBE4CF] dark:border-[#2C2A22]"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

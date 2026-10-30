@@ -3,9 +3,14 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useFirestore } from '@/firebase';
-import { collection, query, onSnapshot, where, Timestamp, orderBy, limit } from 'firebase/firestore';
-import { Bell, Package, ShieldAlert, Smartphone, Zap, ExternalLink, X, Radio } from 'lucide-react';
-import { playNotificationChime } from '@/lib/notifications';
+import { collection, query, onSnapshot, doc, Timestamp, orderBy, limit } from 'firebase/firestore';
+import { Bell, ExternalLink, X, Image as ImageIcon, Video, Music } from 'lucide-react';
+import { 
+  playNotificationChime, 
+  NotificationSettings, 
+  DEFAULT_NOTIFICATION_SETTINGS,
+  AttachmentType
+} from '@/lib/notifications';
 import Link from 'next/link';
 
 interface ActiveToast {
@@ -14,16 +19,49 @@ interface ActiveToast {
   message: string;
   link?: string;
   type?: string;
+  attachmentType?: AttachmentType;
+  attachmentUrl?: string;
 }
 
 const NotificationContext = createContext<any>(null);
 
 export const NotificationProvider = ({ children }: { children: React.ReactNode }) => {
   const [toasts, setToasts] = useState<ActiveToast[]>([]);
+  const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
+  const settingsRef = useRef<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
   const db = useFirestore();
   const isFirstLoadRef = useRef(true);
 
-  const addNotification = useCallback((message: string, duration = 6000, meta?: { title?: string; link?: string; type?: string }) => {
+  // Sync settings ref
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
+
+  // Listen to global settings from Firestore
+  useEffect(() => {
+    if (!db) return;
+    const unsub = onSnapshot(doc(db, 'settings', 'notifications'), (snap) => {
+      if (snap.exists()) {
+        const loaded = { ...DEFAULT_NOTIFICATION_SETTINGS, ...snap.data() } as NotificationSettings;
+        setSettings(loaded);
+      }
+    }, (err) => {
+      console.warn("NotificationProvider settings sync error:", err);
+    });
+    return () => unsub();
+  }, [db]);
+
+  const addNotification = useCallback((
+    message: string, 
+    duration = 7000, 
+    meta?: { 
+      title?: string; 
+      link?: string; 
+      type?: string;
+      attachmentType?: AttachmentType;
+      attachmentUrl?: string;
+    }
+  ) => {
     const id = Date.now() + Math.random();
     setToasts((prev) => [...prev, { id, message, ...meta }]);
 
@@ -40,7 +78,6 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     if (!db) return;
 
     // Listen to real-time additions in 'notifications'
-    const now = Timestamp.now();
     const q = query(
       collection(db, 'notifications'),
       orderBy('createdAt', 'desc'),
@@ -57,13 +94,32 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       snapshot.docChanges().forEach((change) => {
         if (change.type === 'added') {
           const data = change.doc.data();
-          const title = data.title || 'New Release Transmission';
-          const message = data.message || 'A new update is now available on SKY Hub.';
-          const link = data.link || '/#notifications';
-          const type = data.type || 'rom';
+          const currentSettings = settingsRef.current;
 
-          playNotificationChime();
-          addNotification(message, 7000, { title, link, type });
+          // Sound check
+          if (currentSettings.soundEnabled !== false) {
+            const customAudio = data.audioUrl || currentSettings.customChimeUrl;
+            playNotificationChime(customAudio);
+          }
+
+          // Banner Popup check
+          if (currentSettings.bannerPopupEnabled !== false) {
+            const title = data.title || 'New Release Transmission';
+            const message = data.message || 'A new update is now available on SKY Hub.';
+            const link = data.link || '/#notifications';
+            const type = data.type || 'rom';
+            const attType = data.attachmentType || (data.imageUrl ? 'image' : data.videoUrl ? 'video' : data.audioUrl ? 'audio' : 'none');
+            const attUrl = data.attachmentUrl || data.imageUrl || data.videoUrl || data.audioUrl;
+            const duration = currentSettings.bannerDuration || data.duration || 7000;
+
+            addNotification(message, duration, { 
+              title, 
+              link, 
+              type, 
+              attachmentType: attType, 
+              attachmentUrl: attUrl 
+            });
+          }
         }
       });
     }, (error) => {
@@ -99,6 +155,16 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
                   <p className="text-[9px] font-black uppercase tracking-widest text-amber-700 dark:text-[#FDE694]">
                     LIVE TRANSMISSION
                   </p>
+
+                  {/* Multimedia badge if attached */}
+                  {toast.attachmentType && toast.attachmentType !== 'none' && (
+                    <span className="ml-auto inline-flex items-center gap-1 text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-[#FDE694] border border-amber-500/20">
+                      {toast.attachmentType === 'image' && <ImageIcon className="w-2.5 h-2.5" />}
+                      {toast.attachmentType === 'video' && <Video className="w-2.5 h-2.5" />}
+                      {toast.attachmentType === 'audio' && <Music className="w-2.5 h-2.5" />}
+                      <span>{toast.attachmentType}</span>
+                    </span>
+                  )}
                 </div>
 
                 {toast.title && (
