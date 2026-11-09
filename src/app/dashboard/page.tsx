@@ -112,14 +112,31 @@ import { LoadingScreen } from '@/components/ui/loading-screen';
 import { MessageHistory } from '@/components/admin/MessageHistory';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { extractFromContent } from '@/ai/client-ai';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import SuperAdminPanel from '@/components/admin/SuperAdminPanel';
-import BackupExporter from '@/components/admin/BackupExporter';
-import { ShowcaseManager } from '@/components/admin/ShowcaseManager';
-import { CreditsManager } from '@/components/admin/CreditsManager';
+
+const SuperAdminPanel = dynamic(() => import('@/components/admin/SuperAdminPanel'), {
+  ssr: false,
+  loading: () => <div className="p-8 text-center text-sm font-mono opacity-70">Loading Super Admin Panel...</div>,
+});
+const BackupExporter = dynamic(() => import('@/components/admin/BackupExporter'), {
+  ssr: false,
+  loading: () => <div className="p-8 text-center text-sm font-mono opacity-70">Loading Backup Exporter...</div>,
+});
+const ShowcaseManager = dynamic(() => import('@/components/admin/ShowcaseManager').then((m) => m.ShowcaseManager), {
+  ssr: false,
+  loading: () => <div className="p-8 text-center text-sm font-mono opacity-70">Loading Showcase Manager...</div>,
+});
+const CreditsManager = dynamic(() => import('@/components/admin/CreditsManager').then((m) => m.CreditsManager), {
+  ssr: false,
+  loading: () => <div className="p-8 text-center text-sm font-mono opacity-70">Loading Credits Manager...</div>,
+});
+const NotificationManager = dynamic(() => import('@/components/admin/NotificationManager').then((m) => m.NotificationManager), {
+  ssr: false,
+  loading: () => <div className="p-8 text-center text-sm font-mono opacity-70">Loading Notification Manager...</div>,
+});
 import { compressImage } from '@/lib/image-upload';
 import { publishNotification } from '@/lib/notifications';
-import { NotificationManager } from '@/components/admin/NotificationManager';
 
 const HARDCODED_SUPERADMIN = 'meinkxun@gmail.com';
 const HUB_OWNERS = [HARDCODED_SUPERADMIN, 'skyhubowner@gmail.com'];

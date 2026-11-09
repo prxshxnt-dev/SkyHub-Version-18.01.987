@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { AnimatedChevronLeft, AnimatedChevronRightCar } from '@/components/icons';
 import { usePerformanceTier } from '@/context/PerformanceContext';
-import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { compressImage } from '@/lib/image-upload';
 import { toast } from '@/hooks/use-toast';
