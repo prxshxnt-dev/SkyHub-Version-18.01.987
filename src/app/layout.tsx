@@ -49,10 +49,14 @@ export default function RootLayout({
               (function() {
                 try {
                   var theme = localStorage.getItem('skyhub-theme');
-                  var supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                  if (!theme && supportDarkMode) theme = 'dark';
-                  if (!theme) theme = 'dark';
-                  document.documentElement.classList.add(theme);
+                  // Never switch to dark mode on the basis of system theme
+                  if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.classList.remove('light');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.classList.add('light');
+                  }
                 } catch (e) {}
               })();
             `,

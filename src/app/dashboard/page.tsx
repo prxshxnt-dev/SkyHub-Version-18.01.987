@@ -1944,6 +1944,20 @@ export default function DashboardPage() {
                           />
                        </div>
                        <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase tracking-widest">Mirror Link (Optional)</Label>
+                          <Input 
+                            value={editingExtractedItem.item.mirrorUrl || ''} 
+                            onChange={(e) => {
+                              const newItems = [...extractedItems];
+                              newItems[editingExtractedItem.index].mirrorUrl = e.target.value;
+                              setExtractedItems(newItems);
+                              setEditingExtractedItem({ ...editingExtractedItem, item: { ...editingExtractedItem.item, mirrorUrl: e.target.value } });
+                            }}
+                            placeholder="Alternative mirror download URL"
+                            className="bg-muted rounded-xl"
+                          />
+                       </div>
+                       <div className="space-y-2">
                           <Label className="text-[10px] font-black uppercase tracking-widest">Feature Summary</Label>
                           <Textarea 
                             value={editingExtractedItem.item.description || ''} 
@@ -2120,6 +2134,11 @@ export default function DashboardPage() {
                                   Android {item.androidVersion}
                                 </Badge>
                               )}
+                              {item.mirrorUrl && (
+                                <Badge variant="outline" className="text-[7px] font-black uppercase border-blue-500/30 text-blue-500 px-2 py-0">
+                                  Mirror Linked
+                                </Badge>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -2257,8 +2276,15 @@ export default function DashboardPage() {
 
               {activeTab !== 'guides' && (
                 <div className="space-y-2">
-                  <Label className="text-[9px] font-black uppercase ml-1">Registry Download URL</Label>
-                  <Input name="downloadUrl" placeholder="Direct or Mirror Link" className="bg-muted rounded-xl h-12" />
+                  <Label className="text-[9px] font-black uppercase ml-1">Registry Download URL (Primary)</Label>
+                  <Input name="downloadUrl" placeholder="Direct or Primary Download Link" className="bg-muted rounded-xl h-12" />
+                </div>
+              )}
+
+              {(activeTab === 'roms' || activeTab === 'recoveries') && (
+                <div className="space-y-2">
+                  <Label className="text-[9px] font-black uppercase ml-1">Mirror Download Link (Optional)</Label>
+                  <Input name="mirrorUrl" placeholder="Mirror Link (SourceForge, Mega, Google Drive, etc.)" className="bg-muted rounded-xl h-12" />
                 </div>
               )}
 
@@ -2623,8 +2649,15 @@ export default function DashboardPage() {
 
               {activeTab !== 'guides' && (
                 <div className="space-y-2">
-                  <Label className="text-[9px] font-black uppercase ml-1">Registry Download URL</Label>
-                  <Input name="downloadUrl" defaultValue={editingItem?.downloadUrl} placeholder="Direct or Mirror Link" className="bg-muted rounded-xl h-12" />
+                  <Label className="text-[9px] font-black uppercase ml-1">Registry Download URL (Primary)</Label>
+                  <Input name="downloadUrl" defaultValue={editingItem?.downloadUrl} placeholder="Direct or Primary Download Link" className="bg-muted rounded-xl h-12" />
+                </div>
+              )}
+
+              {(activeTab === 'roms' || activeTab === 'recoveries') && (
+                <div className="space-y-2">
+                  <Label className="text-[9px] font-black uppercase ml-1">Mirror Download Link (Optional)</Label>
+                  <Input name="mirrorUrl" defaultValue={editingItem?.mirrorUrl || ''} placeholder="Mirror Link (SourceForge, Mega, Google Drive, etc.)" className="bg-muted rounded-xl h-12" />
                 </div>
               )}
 

@@ -42,7 +42,8 @@ import {
   Trash2,
   Plus,
   Check,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Copy
 } from 'lucide-react';
 import {
   Accordion,
@@ -172,6 +173,33 @@ const initiateDownload = async (db: any, auth: any, collectionName: string, id: 
   toast({ title: "Mirror Redirect", description: "Relaying request to external repository." });
 };
 
+const handleCopyLink = async (url?: string, label: string = 'Download link') => {
+  if (!url) {
+    toast({ variant: "destructive", title: "Link Unavailable", description: "No download link provided." });
+    return;
+  }
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url);
+    } else {
+      const textArea = document.createElement("textarea");
+      textArea.value = url;
+      textArea.style.position = "fixed";
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+    }
+    toast({
+      title: "Link Copied!",
+      description: `${label} copied to clipboard.`,
+    });
+  } catch (err) {
+    toast({ variant: "destructive", title: "Copy Failed", description: "Could not copy link to clipboard." });
+  }
+};
+
 const LoadingState = ({ label }: { label: string }) => (
   <div className="py-20 flex flex-col items-center gap-4">
     <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
@@ -184,6 +212,9 @@ export function ROMCard({ rom }: { rom: any }) {
   const { auth } = initializeFirebase();
   const { user } = useUser();
   const isSuperAdmin = user?.email?.toLowerCase().trim() === 'meinkxun@gmail.com' || user?.email?.toLowerCase().trim() === 'skyhubowner@gmail.com';
+  const userProfileRef = useMemoFirebase(() => user ? doc(db, 'users', user.uid) : null, [db, user]);
+  const { data: profile } = useDoc(userProfileRef);
+  const isAdmin = isSuperAdmin || profile?.role === 'admin' || profile?.role === 'super_admin';
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -284,6 +315,10 @@ export function ROMCard({ rom }: { rom: any }) {
   };
 
   const handleSaveThumbnail = async () => {
+    if (!isAdmin) {
+      toast({ variant: "destructive", title: "Access Restricted", description: "Only administrators can upload or edit ROM thumbnails." });
+      return;
+    }
     if (!db || !rom?.id) return;
     setIsSavingMedia(true);
     try {
@@ -307,6 +342,10 @@ export function ROMCard({ rom }: { rom: any }) {
   };
 
   const handleSaveScreenshots = async () => {
+    if (!isAdmin) {
+      toast({ variant: "destructive", title: "Access Restricted", description: "Only administrators can upload or edit screenshots." });
+      return;
+    }
     if (!db || !rom?.id) return;
     setIsSavingMedia(true);
     try {
@@ -330,6 +369,10 @@ export function ROMCard({ rom }: { rom: any }) {
   };
 
   const handleSaveAllMedia = async () => {
+    if (!isAdmin) {
+      toast({ variant: "destructive", title: "Access Restricted", description: "Only administrators can upload or edit ROM media." });
+      return;
+    }
     if (!db || !rom?.id) return;
     setIsSavingMedia(true);
     try {
@@ -375,33 +418,37 @@ export function ROMCard({ rom }: { rom: any }) {
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 leading-tight">
                 Sorry for the inconveniences,<br />image will be added soon
               </p>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => setIsMediaModalOpen(true)}
-                className="mt-2 text-[10px] font-black uppercase tracking-wider bg-[#FDE694] text-[#121212] hover:bg-[#fbdc70] gap-1.5 rounded-full px-4 h-8 cursor-pointer shadow-xs"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span>Upload ROM Images</span>
-              </Button>
+              {isAdmin && (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setIsMediaModalOpen(true)}
+                  className="mt-2 text-[10px] font-black uppercase tracking-wider bg-[#FDE694] text-[#121212] hover:bg-[#fbdc70] gap-1.5 rounded-full px-4 h-8 cursor-pointer shadow-xs"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Upload ROM Images</span>
+                </Button>
+              )}
             </div>
           )}
 
-          {/* Quick Upload Images Button on Card */}
-          <div className="absolute top-4 right-4 z-20">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsMediaModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 hover:bg-[#FDE694] hover:text-[#121212] text-white border border-white/20 text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-md transition-all duration-200 active:scale-95 cursor-pointer"
-              title="Upload ROM Thumbnail & Screenshots"
-            >
-              <Upload className="w-3 h-3" />
-              <span>Upload Images</span>
-            </button>
-          </div>
+          {/* Quick Upload Images Button on Card (Admin only) */}
+          {isAdmin && (
+            <div className="absolute top-4 right-4 z-20">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsMediaModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 hover:bg-[#FDE694] hover:text-[#121212] text-white border border-white/20 text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-md transition-all duration-200 active:scale-95 cursor-pointer"
+                title="Upload ROM Thumbnail & Screenshots"
+              >
+                <Upload className="w-3 h-3" />
+                <span>Upload Images</span>
+              </button>
+            </div>
+          )}
 
           <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
              <div className="flex gap-2">
@@ -461,26 +508,55 @@ export function ROMCard({ rom }: { rom: any }) {
                     <div className="p-6 rounded-3xl border border-dashed border-[#EBE4CF] dark:border-[#36342A] bg-black/5 dark:bg-white/5 text-center flex flex-col items-center gap-2">
                       <Camera className="w-6 h-6 text-muted-foreground/40" />
                       <p className="text-xs text-muted-foreground">No screenshots added yet.</p>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => {
-                          setActiveMediaTab('screenshots');
-                          setIsMediaModalOpen(true);
-                        }}
-                        className="text-xs font-bold bg-[#FDE694] text-[#121212] hover:bg-[#fbdc70] rounded-xl gap-1.5 cursor-pointer"
-                      >
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>Upload Screenshots</span>
-                      </Button>
+                      {isAdmin && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => {
+                            setActiveMediaTab('screenshots');
+                            setIsMediaModalOpen(true);
+                          }}
+                          className="text-xs font-bold bg-[#FDE694] text-[#121212] hover:bg-[#fbdc70] rounded-xl gap-1.5 cursor-pointer"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Upload Screenshots</span>
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
 
                 <div className="grid grid-cols-1 gap-2">
-                  <Button variant="outline" onClick={() => initiateDownload(db, auth, 'roms', rom.id, rom.downloadUrl, rom.name)} className="w-full h-12 justify-start px-6 rounded-2xl border-white/10 bg-white/5 text-[10px] font-black uppercase gap-4 hover:bg-white/10">
-                    <LinkIcon className="w-4 h-4" /> Primary Acquisition Protocol
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => initiateDownload(db, auth, 'roms', rom.id, rom.downloadUrl, rom.name)} className="flex-1 h-12 justify-start px-6 rounded-2xl border-white/10 bg-white/5 text-[10px] font-black uppercase gap-4 hover:bg-white/10">
+                      <LinkIcon className="w-4 h-4 text-primary" /> Primary Acquisition Protocol
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      onClick={() => handleCopyLink(rom.downloadUrl, `${rom.name} download link`)} 
+                      className="w-12 h-12 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 shrink-0"
+                      title="Copy Primary Download Link"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  {rom.mirrorUrl && (
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" onClick={() => initiateDownload(db, auth, 'roms', rom.id, rom.mirrorUrl, `${rom.name} (Mirror)`)} className="flex-1 h-12 justify-start px-6 rounded-2xl border-white/10 bg-white/5 text-[10px] font-black uppercase gap-4 hover:bg-white/10 text-blue-400">
+                        <ExternalLink className="w-4 h-4" /> Mirror Acquisition Protocol
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        onClick={() => handleCopyLink(rom.mirrorUrl, `${rom.name} mirror link`)} 
+                        className="w-12 h-12 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 shrink-0 text-blue-400"
+                        title="Copy Mirror Download Link"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -495,12 +571,47 @@ export function ROMCard({ rom }: { rom: any }) {
           >
             {isExpanded ? 'Show Less' : 'Read Details'}
           </Button>
-          <Button 
-            onClick={() => initiateDownload(db, auth, 'roms', rom.id, rom.downloadUrl, rom.name)} 
-            className="w-full h-12 rounded-full bg-primary text-primary-foreground font-black uppercase text-[11px] tracking-widest shadow-md hover:scale-[1.02] active:scale-[0.98] transition-transform"
-          >
-            Download ROM
-          </Button>
+
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={() => initiateDownload(db, auth, 'roms', rom.id, rom.downloadUrl, rom.name)} 
+              className="flex-1 h-12 rounded-full bg-primary text-primary-foreground font-black uppercase text-[11px] tracking-widest shadow-md hover:scale-[1.02] active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              <span>Download ROM</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => handleCopyLink(rom.downloadUrl, `${rom.name} download link`)}
+              className="w-12 h-12 rounded-full border-border bg-background/80 hover:bg-muted shrink-0 transition-transform hover:scale-105 active:scale-95"
+              title="Copy Download Link"
+            >
+              <Copy className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {rom.mirrorUrl && (
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="secondary"
+                onClick={() => initiateDownload(db, auth, 'roms', rom.id, rom.mirrorUrl, `${rom.name} (Mirror)`)} 
+                className="flex-1 h-11 rounded-full bg-muted/80 hover:bg-muted text-foreground font-black uppercase text-[10px] tracking-wider border border-border flex items-center justify-center gap-2"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-blue-500" />
+                <span>Mirror Link</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleCopyLink(rom.mirrorUrl, `${rom.name} mirror link`)}
+                className="w-11 h-11 rounded-full border-border bg-background/80 hover:bg-muted shrink-0 text-blue-500"
+                title="Copy Mirror Download Link"
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
       </Card>
 
@@ -751,11 +862,24 @@ function ModuleCard({ mod }: { mod: any }) {
           <div className={cn("text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap", !isExpanded ? "line-clamp-2 mb-6" : "mb-6")}>{parseLinks(mod.description)}</div>
           <div className="text-[9px] font-black uppercase text-muted-foreground mb-4">{mod.downloadCount || 0} DOWNLOADS</div>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <Button variant="ghost" size="sm" onClick={() => setIsExpanded(!isExpanded)} className="text-[8px] font-black uppercase text-muted-foreground">{isExpanded ? 'LESS' : 'MORE'}</Button>
-          <motion.div whileTap={{ scale: 0.9 }}>
-            <Button onClick={() => initiateDownload(db, auth, 'modules', mod.id, mod.downloadUrl, mod.name)} size="icon" className="w-10 h-10 rounded-xl bg-primary"><Download className="w-4 h-4" /></Button>
-          </motion.div>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => handleCopyLink(mod.downloadUrl, `${mod.name} download link`)} 
+              className="w-10 h-10 rounded-xl border-border hover:bg-muted" 
+              title="Copy Download Link"
+            >
+              <Copy className="w-4 h-4" />
+            </Button>
+            <motion.div whileTap={{ scale: 0.9 }}>
+              <Button onClick={() => initiateDownload(db, auth, 'modules', mod.id, mod.downloadUrl, mod.name)} size="icon" className="w-10 h-10 rounded-xl bg-primary" title="Download Module">
+                <Download className="w-4 h-4" />
+              </Button>
+            </motion.div>
+          </div>
         </div>
       </Card>
     </motion.div>
@@ -799,10 +923,22 @@ function ModApkCard({ apk }: { apk: any }) {
           <h3 className="text-lg font-black uppercase tracking-tight text-foreground mb-4 truncate">{apk.name}</h3>
           <div className={cn("text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap", !isExpanded ? "line-clamp-2 mb-6" : "mb-6")}>{parseLinks(apk.description)}</div>
           <div className="text-[9px] font-black uppercase text-muted-foreground mb-4">{apk.downloadCount || 0} DOWNLOADS</div>
-          <div className="mt-auto flex gap-3">
+          <div className="mt-auto flex gap-2">
             <motion.div className="flex-1" whileTap={{ scale: 0.98 }}>
-              <Button onClick={() => initiateDownload(db, auth, 'mod-apks', apk.id, apk.downloadUrl, apk.downloadFileName || apk.name)} className="w-full h-12 rounded-2xl bg-primary font-black uppercase text-[10px]">Download</Button>
+              <Button onClick={() => initiateDownload(db, auth, 'mod-apks', apk.id, apk.downloadUrl, apk.downloadFileName || apk.name)} className="w-full h-12 rounded-2xl bg-primary font-black uppercase text-[10px] flex items-center justify-center gap-2">
+                <Download className="w-4 h-4" />
+                <span>Download</span>
+              </Button>
             </motion.div>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => handleCopyLink(apk.downloadUrl, `${apk.name} download link`)} 
+              className="w-12 h-12 rounded-2xl border-border shrink-0 hover:bg-muted"
+              title="Copy Download Link"
+            >
+              <Copy className="w-4 h-4" />
+            </Button>
             <motion.div whileTap={{ scale: 0.95 }}>
               <Button variant="outline" onClick={() => setIsExpanded(!isExpanded)} className={cn("w-12 h-12 rounded-2xl", isExpanded && "bg-primary text-white")}>
                 {isExpanded ? <ChevronUp className="w-4 h-4" /> : <Info className="w-4 h-4" />}
@@ -830,6 +966,12 @@ export function ModApkGrid({ apks, isLoading }: { apks: any[], isLoading: boolea
 function RecoveryCard({ recovery }: { recovery: any }) {
   const db = useFirestore();
   const { auth } = initializeFirebase();
+  const { user } = useUser();
+  const isSuperAdmin = user?.email?.toLowerCase().trim() === 'meinkxun@gmail.com' || user?.email?.toLowerCase().trim() === 'skyhubowner@gmail.com';
+  const userProfileRef = useMemoFirebase(() => user ? doc(db, 'users', user.uid) : null, [db, user]);
+  const { data: profile } = useDoc(userProfileRef);
+  const isAdmin = isSuperAdmin || profile?.role === 'admin' || profile?.role === 'super_admin';
+
   const [isExpanded, setIsExpanded] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [currentThumbnail, setCurrentThumbnail] = useState<string>(recovery.imageUrl || '');
@@ -863,6 +1005,10 @@ function RecoveryCard({ recovery }: { recovery: any }) {
   };
 
   const handleSaveThumbnail = async () => {
+    if (!isAdmin) {
+      toast({ variant: "destructive", title: "Access Restricted", description: "Only administrators can upload recovery thumbnails." });
+      return;
+    }
     if (!db) {
       toast({ variant: "destructive", title: "Database unavailable" });
       return;
@@ -907,48 +1053,87 @@ function RecoveryCard({ recovery }: { recovery: any }) {
                 <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 leading-tight">
                   No visual preview available
                 </p>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => setIsUploadModalOpen(true)}
-                  className="mt-1 text-[10px] font-black uppercase tracking-wider bg-[#FDE694] text-[#121212] hover:bg-[#fbdc70] gap-1.5 rounded-full px-4 h-8 cursor-pointer shadow-xs"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Upload Thumbnail</span>
-                </Button>
+                {isAdmin && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => setIsUploadModalOpen(true)}
+                    className="mt-1 text-[10px] font-black uppercase tracking-wider bg-[#FDE694] text-[#121212] hover:bg-[#fbdc70] gap-1.5 rounded-full px-4 h-8 cursor-pointer shadow-xs"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload Thumbnail</span>
+                  </Button>
+                )}
               </div>
             )}
 
-            {/* Quick Upload Button on Card */}
-            <div className="absolute top-4 right-4 z-20">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsUploadModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 hover:bg-[#FDE694] hover:text-[#121212] text-white border border-white/20 text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-md transition-all duration-200 active:scale-95 cursor-pointer"
-                title="Upload Recovery Thumbnail"
-              >
-                <Upload className="w-3 h-3" />
-                <span>Upload Thumbnail</span>
-              </button>
-            </div>
+            {/* Quick Upload Button on Card (Admin only) */}
+            {isAdmin && (
+              <div className="absolute top-4 right-4 z-20">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsUploadModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 hover:bg-[#FDE694] hover:text-[#121212] text-white border border-white/20 text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-md transition-all duration-200 active:scale-95 cursor-pointer"
+                  title="Upload Recovery Thumbnail"
+                >
+                  <Upload className="w-3 h-3" />
+                  <span>Upload Thumbnail</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
         <div className="px-8 pb-8 flex flex-col flex-1">
           <h3 className="text-lg font-black uppercase tracking-tight text-foreground mb-4 truncate">{recovery.name}</h3>
           <div className={cn("text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap", !isExpanded ? "line-clamp-2 mb-6" : "mb-6")}>{parseLinks(recovery.description)}</div>
           <div className="text-[9px] font-black uppercase text-muted-foreground mb-4">{recovery.downloadCount || 0} DOWNLOADS</div>
-          <div className="mt-auto flex gap-3">
-            <motion.div className="flex-1" whileTap={{ scale: 0.98 }}>
-              <Button onClick={() => initiateDownload(db, auth, 'recoveries', recovery.id, recovery.downloadUrl, recovery.downloadFileName || recovery.name)} className="w-full h-12 rounded-2xl bg-primary font-black uppercase text-[10px]">Download</Button>
-            </motion.div>
-            <motion.div whileTap={{ scale: 0.95 }}>
-              <Button variant="outline" onClick={() => setIsExpanded(!isExpanded)} className={cn("w-12 h-12 rounded-2xl", isExpanded && "bg-primary text-white")}>
-                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <Info className="w-4 h-4" />}
+          <div className="mt-auto space-y-2">
+            <div className="flex gap-2">
+              <motion.div className="flex-1" whileTap={{ scale: 0.98 }}>
+                <Button onClick={() => initiateDownload(db, auth, 'recoveries', recovery.id, recovery.downloadUrl, recovery.downloadFileName || recovery.name)} className="w-full h-12 rounded-2xl bg-primary font-black uppercase text-[10px] flex items-center justify-center gap-2">
+                  <Download className="w-4 h-4" />
+                  <span>Download</span>
+                </Button>
+              </motion.div>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={() => handleCopyLink(recovery.downloadUrl, `${recovery.name} download link`)} 
+                className="w-12 h-12 rounded-2xl border-border shrink-0 hover:bg-muted"
+                title="Copy Download Link"
+              >
+                <Copy className="w-4 h-4" />
               </Button>
-            </motion.div>
+              <motion.div whileTap={{ scale: 0.95 }}>
+                <Button variant="outline" onClick={() => setIsExpanded(!isExpanded)} className={cn("w-12 h-12 rounded-2xl", isExpanded && "bg-primary text-white")}>
+                  {isExpanded ? <ChevronUp className="w-4 h-4" /> : <Info className="w-4 h-4" />}
+                </Button>
+              </motion.div>
+            </div>
+            {recovery.mirrorUrl && (
+              <div className="flex gap-2">
+                <Button 
+                  variant="secondary"
+                  onClick={() => initiateDownload(db, auth, 'recoveries', recovery.id, recovery.mirrorUrl, `${recovery.name} (Mirror)`)} 
+                  className="flex-1 h-10 rounded-xl bg-muted/80 text-foreground font-black uppercase text-[9px] flex items-center justify-center gap-2 border border-border"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Mirror Link</span>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => handleCopyLink(recovery.mirrorUrl, `${recovery.name} mirror link`)} 
+                  className="w-10 h-10 rounded-xl border-border shrink-0 text-blue-500 hover:bg-muted"
+                  title="Copy Mirror Link"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </Card>
@@ -1070,9 +1255,20 @@ export function RootGrid({ packages, isLoading }: { packages: any[], isLoading: 
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <div className="text-[9px] font-black uppercase text-muted-foreground">{pkg.downloadCount || 0} DOWNLOADS</div>
-                  <motion.div whileTap={{ scale: 0.95 }}>
-                    <Button onClick={() => initiateDownload(db, auth, 'root-packages', pkg.id, pkg.downloadUrl, pkg.name)} className="rounded-xl bg-primary h-12 px-6 text-[10px] font-black uppercase">Get Package</Button>
-                  </motion.div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      onClick={() => handleCopyLink(pkg.downloadUrl, `${pkg.name} package link`)} 
+                      className="w-12 h-12 rounded-xl border-border shrink-0 hover:bg-muted"
+                      title="Copy Package Link"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                    <motion.div whileTap={{ scale: 0.95 }}>
+                      <Button onClick={() => initiateDownload(db, auth, 'root-packages', pkg.id, pkg.downloadUrl, pkg.name)} className="rounded-xl bg-primary h-12 px-6 text-[10px] font-black uppercase">Get Package</Button>
+                    </motion.div>
+                  </div>
                 </div>
               </div>
               <Accordion type="single" collapsible className="w-full">

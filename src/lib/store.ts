@@ -16,6 +16,7 @@ export interface ROM {
   description: string;
   developer: string;
   downloadUrl: string;
+  mirrorUrl?: string;
   imageUrl: string;
   isApproved: boolean;
   downloads: number;

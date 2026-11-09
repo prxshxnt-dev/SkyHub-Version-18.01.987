@@ -159,15 +159,55 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({ item, 
               </a>
             )}
             {item.downloadUrl && (
-              <a
-                href={item.downloadUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="px-5 py-2.5 rounded-lg bg-[var(--c-btn-bg, #241F1A)] text-[var(--c-btn-text, #F4EDE0)] text-xs font-mono font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-md"
-              >
-                <Download className="w-4 h-4" />
-                Direct Download
-              </a>
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(item.downloadUrl || '');
+                    playCheckmarkChime();
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="px-4 py-2.5 rounded-lg border border-[var(--c-border)] bg-[var(--c-card)] hover:bg-[var(--c-input-bg)] text-xs font-mono font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Copy Download Link"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copied ? 'Link Copied' : 'Copy Link'}</span>
+                </button>
+                <a
+                  href={item.downloadUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-5 py-2.5 rounded-lg bg-[var(--c-btn-bg, #241F1A)] text-[var(--c-btn-text, #F4EDE0)] text-xs font-mono font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-md"
+                >
+                  <Download className="w-4 h-4" />
+                  Direct Download
+                </a>
+              </>
+            )}
+            {item.mirrorUrl && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(item.mirrorUrl || '');
+                    playCheckmarkChime();
+                  }}
+                  className="p-2.5 rounded-lg border border-[var(--c-border)] bg-[var(--c-card)] hover:bg-[var(--c-input-bg)] text-xs font-mono font-semibold flex items-center gap-1.5 transition-colors cursor-pointer text-blue-500"
+                  title="Copy Mirror Link"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+                <a
+                  href={item.mirrorUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2.5 rounded-lg border border-[var(--c-border)] bg-[var(--c-card)] text-xs font-mono font-bold flex items-center gap-2 hover:bg-[var(--c-input-bg)] transition-colors text-blue-500"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Mirror Download
+                </a>
+              </>
             )}
           </div>
         </motion.div>

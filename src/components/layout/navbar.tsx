@@ -86,12 +86,14 @@ export function Navbar() {
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('skyhub-theme') as 'light' | 'dark' | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.classList.toggle('dark', savedTheme === 'dark');
-    } else {
+    if (savedTheme === 'dark') {
       setTheme('dark');
       document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      setTheme('light');
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
     }
 
     const handleScroll = () => {

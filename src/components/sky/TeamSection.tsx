@@ -424,7 +424,9 @@ function getMemberPortfolioData(member: any): MemberPortfolioDetails {
 export const TeamSection: React.FC = () => {
   const db = useFirestore();
   const { user } = useUser();
-  const isSuperAdmin = user?.email?.toLowerCase().trim() === 'meinkxun@gmail.com' || user?.email?.toLowerCase().trim() === 'skyhubowner@gmail.com';
+  const userProfileRef = useMemoFirebase(() => user ? doc(db, 'users', user.uid) : null, [db, user]);
+  const { data: profile } = useDoc(userProfileRef);
+  const isSuperAdmin = user?.email?.toLowerCase().trim() === 'meinkxun@gmail.com' || user?.email?.toLowerCase().trim() === 'skyhubowner@gmail.com' || profile?.role === 'super_admin' || profile?.role === 'admin';
 
   // Firestore queries for dynamic credits and header
   const creditsQuery = useMemoFirebase(

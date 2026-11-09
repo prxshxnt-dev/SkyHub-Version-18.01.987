@@ -50,7 +50,7 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     const applyStyles = () => {
       console.log('Applying styles, globalData:', globalData, 'profile:', profile);
-      const isLightMode = document.documentElement.classList.contains('light');
+      const isLightMode = document.documentElement.classList.contains('light') || !document.documentElement.classList.contains('dark');
       
       // Determine which theme to apply: global theme takes precedence over user theme
       const themeToApply = globalData?.theme || profile?.theme;

@@ -50,6 +50,7 @@ export interface ROMResource {
   type?: "AOSP" | "Pixel" | "MIUI/HyperOS" | "Lineage" | "Kernel";
   description?: string;
   downloadUrl?: string;
+  mirrorUrl?: string;
   sourceUrl?: string;
   xdaUrl?: string;
   changelog?: string;
@@ -71,6 +72,7 @@ export interface RecoveryResource {
   status?: string;
   description?: string;
   downloadUrl?: string;
+  mirrorUrl?: string;
   fastbootCommand?: string;
   supportsDecryption?: boolean;
   date?: string;

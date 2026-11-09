@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Download, ExternalLink, Flame, Shield, Calendar, Tag, Info, ArrowUpRight } from 'lucide-react';
+import { Download, ExternalLink, Flame, Shield, Calendar, Tag, Info, ArrowUpRight, Copy } from 'lucide-react';
 import { ROMResource } from '../../types';
 import { playTerminalBlip } from '../../utils/soundManager';
 
@@ -232,7 +232,7 @@ export const ROMsSection: React.FC<ROMsSectionProps> = ({
             </div>
 
             {/* Bottom Actions */}
-            <div className="pt-3 border-t border-[var(--c-border)] flex items-center justify-between gap-2">
+            <div className="pt-3 border-t border-[var(--c-border)] flex flex-wrap items-center justify-between gap-2">
               <button
                 onClick={() => {
                   playTerminalBlip(680, 0.04);
@@ -244,15 +244,44 @@ export const ROMsSection: React.FC<ROMsSectionProps> = ({
                 <span>Specs & Flashing</span>
               </button>
 
-              <a
-                href={rom.downloadUrl || '#'}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3.5 py-1.5 rounded-lg bg-[var(--c-btn-bg, #241F1A)] text-[var(--c-btn-text, #F4EDE0)] text-xs font-mono font-bold flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-xs"
-              >
-                <Download className="w-3 h-3" />
-                <span>Get ROM</span>
-              </a>
+              <div className="flex items-center gap-1.5">
+                {rom.downloadUrl && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigator.clipboard.writeText(rom.downloadUrl || '');
+                    }}
+                    className="p-1.5 rounded-lg border border-[var(--c-border)] bg-[var(--c-card)] hover:bg-[var(--c-input-bg)] text-[var(--c-subtle)] hover:text-[var(--c-heading)] transition-colors cursor-pointer"
+                    title="Copy Download Link"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                )}
+
+                <a
+                  href={rom.downloadUrl || '#'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3.5 py-1.5 rounded-lg bg-[var(--c-btn-bg, #241F1A)] text-[var(--c-btn-text, #F4EDE0)] text-xs font-mono font-bold flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-xs"
+                >
+                  <Download className="w-3 h-3" />
+                  <span>Get ROM</span>
+                </a>
+
+                {rom.mirrorUrl && (
+                  <a
+                    href={rom.mirrorUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-2.5 py-1.5 rounded-lg border border-[var(--c-border)] bg-[var(--c-card)] text-xs font-mono font-semibold flex items-center gap-1 hover:bg-[var(--c-input-bg)] transition-colors"
+                    title="Alternative Mirror Download"
+                  >
+                    <ExternalLink className="w-3 h-3 text-blue-500" />
+                    <span>Mirror</span>
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         ))}

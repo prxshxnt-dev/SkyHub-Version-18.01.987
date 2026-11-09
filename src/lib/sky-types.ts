@@ -85,6 +85,8 @@ export interface RomItem {
   maintainerHandle?: string;
   maintainerId?: string; // Reference to Admin.userId
   url: string;
+  downloadUrl?: string;
+  mirrorUrl?: string;
   description?: string;
   changelog?: string[];
   createdAt?: string;

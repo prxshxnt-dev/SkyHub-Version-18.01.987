@@ -183,6 +183,26 @@
         "name": { "type": "string" },
         "description": { "type": "string" },
         "downloadUrl": { "type": "string" },
+        "mirrorUrl": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "screenshots": { "type": "array", "items": { "type": "string" } },
+        "developer": { "type": "string" },
+        "androidVersion": { "type": "string" },
+        "category": { "type": "string" },
+        "downloadCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name"]
+    },
+    "ROM": {
+      "title": "Custom ROM",
+      "description": "Represents a custom ROM build for Snapdragon 4 Gen 2 (sky / sky_pro).",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "downloadUrl": { "type": "string" },
+        "mirrorUrl": { "type": "string" },
         "imageUrl": { "type": "string" },
         "screenshots": { "type": "array", "items": { "type": "string" } },
         "developer": { "type": "string" },
@@ -237,6 +257,10 @@
     "/recoveries/{recoveryId}": {
       "schema": "CustomRecovery",
       "description": "Collection of Custom Recoveries."
+    },
+    "/roms/{romId}": {
+      "schema": "ROM",
+      "description": "Collection of Custom ROMs."
     },
     "/users/{userId}": {
       "schema": "User",
